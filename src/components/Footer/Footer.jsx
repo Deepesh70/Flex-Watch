@@ -1,35 +1,107 @@
-import React from 'react'
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { FaFacebookF, FaTwitter, FaInstagram, FaYoutube, FaFilm } from 'react-icons/fa';
 
 const Footer = () => {
-    return (
-        <>
-        <div className='bg-gray-900 text-white py-8 mt-12b px-44'>
-           
-            <div className='flex flex-row justify-between items-center'>
-               <div>
-                <span className='text-2xl font-bold'>BookMyShow</span>
-               </div>
-               <span>
-                <button className='bg-red-600 px-4 py-2 rounded'>Contact Us</button>
-               </span>
-                
+    const movieLinks = ["Action", "Comedy", "Drama", "Horror", "Romance", "Fantasy", "Animation", "Thriller"];
+    const seriesLinks = ["Reality Shows", "Classic Shows", "Comedy", "Sci-Fi", "Documentary", "Crime"];
+    const supportLinks = ["Manage Account", "Privacy Policy", "Help Center", "Terms of Use", "Contact Us"];
 
-            </div>
-           
-            <div className='text-center mt-4'>Follow us on social media
-                <div className='flex flex-row justify-center items-center gap-4 mt-2'>
-                    <img src='https://img.icons8.com/ios-filled/50/ffffff/facebook--v1.png' alt='facebook' className='w-6 h-6 cursor-pointer'/>
-                    <img src='https://img.icons8.com/ios-filled/50/ffffff/twitter--v1.png' alt='twitter' className='w-6 h-6 cursor-pointer'/>
-                    <img src='https://img.icons8.com/ios-filled/50/ffffff/instagram-new--v1.png' alt='instagram' className='w-6 h-6 cursor-pointer'/>
-                    <img src='https://img.icons8.com/ios-filled/50/ffffff/youtube-play--v1.png' alt='youtube' className='w-6 h-6 cursor-pointer'/>
+    return (
+        <footer className="bg-dark-800 border-t border-white/5">
+            {/* Main Footer Content */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+                    {/* Brand Column */}
+                    <div className="col-span-2 md:col-span-1">
+                        <Link to="/" className="flex items-center gap-2 mb-4">
+                            <FaFilm className="text-accent-gold w-6 h-6" />
+                            <span className="text-accent-gold text-xl font-extrabold">Movie</span>
+                            <span className="text-white text-xl font-light">love</span>
+                        </Link>
+                        <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                            Your ultimate destination for movies, TV shows, and entertainment.
+                            Stream the latest and greatest content.
+                        </p>
+                        {/* Social Icons */}
+                        <div className="flex items-center gap-3">
+                            {[FaFacebookF, FaTwitter, FaInstagram, FaYoutube].map((Icon, idx) => (
+                                <a
+                                    key={idx}
+                                    href="#"
+                                    className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-accent-gold hover:border-accent-gold/30 hover:bg-accent-gold/10 transition-all duration-200"
+                                >
+                                    <Icon className="w-4 h-4" />
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Movies Column */}
+                    <div>
+                        <h4 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">
+                            Movies
+                        </h4>
+                        <ul className="space-y-2.5">
+                            {movieLinks.map((link) => (
+                                <li key={link}>
+                                    <a href="#" className="text-gray-500 hover:text-accent-gold text-sm transition-colors duration-200">
+                                        {link}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Series Column */}
+                    <div>
+                        <h4 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">
+                            Series
+                        </h4>
+                        <ul className="space-y-2.5">
+                            {seriesLinks.map((link) => (
+                                <li key={link}>
+                                    <a href="#" className="text-gray-500 hover:text-accent-gold text-sm transition-colors duration-200">
+                                        {link}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Support Column */}
+                    <div>
+                        <h4 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">
+                            Support
+                        </h4>
+                        <ul className="space-y-2.5">
+                            {supportLinks.map((link) => (
+                                <li key={link}>
+                                    <a href="#" className="text-gray-500 hover:text-accent-gold text-sm transition-colors duration-200">
+                                        {link}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
             </div>
-             <div className='text-center mt-6'>
-                <p className='text-gray-400'>© 1996-2024 BookMyShow. All Rights Reserved.</p>
+
+            {/* Bottom Bar */}
+            <div className="border-t border-white/5">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row justify-between items-center gap-3">
+                    <p className="text-gray-600 text-xs">
+                        © 2025 Movie Love. All Rights Reserved.
+                    </p>
+                    <div className="flex items-center gap-6">
+                        <a href="#" className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Privacy</a>
+                        <a href="#" className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Terms</a>
+                        <a href="#" className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Cookies</a>
+                    </div>
+                </div>
             </div>
-        </div>
-        </>
-    )
+        </footer>
+    );
 };
 
 export default Footer;

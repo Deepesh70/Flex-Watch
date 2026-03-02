@@ -1,19 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* body{
-    background-color: aliceblue !important;
-} */
+/* Global Dark Theme */
+html {
+  scroll-behavior: smooth;
+}
 
+body {
+  background-color: #050709;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0e17;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2d3748;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4a5568;
+}
+
+/* Slick Carousel Overrides */
 .slick-prev {
-    left: 3% !important;
-    z-index: 1;
-    color: yellow;
+  left: 10px !important;
+  z-index: 10;
 }
 
 .slick-next {
-    right: 3% !important;
-    z-index: 1;
-    color: yellow;
+  right: 10px !important;
+  z-index: 10;
+}
+
+.slick-prev:before,
+.slick-next:before {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 28px !important;
+}
+
+.slick-prev:hover:before,
+.slick-next:hover:before {
+  color: #f5c518 !important;
+}
+
+.slick-dots li button:before {
+  color: rgba(255, 255, 255, 0.4) !important;
+  font-size: 10px !important;
+}
+
+.slick-dots li.slick-active button:before {
+  color: #f5c518 !important;
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(15, 21, 32, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Star Rating */
+.star-filled {
+  color: #f5c518;
+}
+
+.star-empty {
+  color: #4a5568;
+}
+
+/* Hover Card Effect */
+.movie-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.movie-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(245, 197, 24, 0.1);
+}
+
+/* Hero gradient overlays */
+.hero-gradient-bottom {
+  background: linear-gradient(to top, #050709 0%, #050709 5%, transparent 60%);
+}
+
+.hero-gradient-left {
+  background: linear-gradient(to right, #050709 0%, #050709 15%, transparent 55%);
+}
+
+/* Featured section gradient */
+.featured-gradient {
+  background: linear-gradient(to right, #050709 0%, rgba(5, 7, 9, 0.85) 40%, rgba(5, 7, 9, 0.4) 70%, transparent 100%);
+}
+
+/* Category pill active */
+.category-pill {
+  transition: all 0.25s ease;
+}
+
+.category-pill:hover {
+  background: rgba(245, 197, 24, 0.15);
+  color: #f5c518;
+  border-color: rgba(245, 197, 24, 0.3);
+}
+
+.category-pill.active {
+  background: rgba(245, 197, 24, 0.2);
+  color: #f5c518;
+  border-color: #f5c518;
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #141923 25%, #1a2130 50%, #141923 75%);
+  background-size: 2000px 100%;
+  animation: shimmer 2s infinite;
 }
