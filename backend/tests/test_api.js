@@ -24,34 +24,38 @@ async function testAll() {
     const health = await axios.get(`${base}/health/ready`);
     console.log('✔ Health Check:', health.data.status, health.data.checks);
 
-    // 2. Movies trending (with retry for remote TMDB connectivity)
-    let trending;
-    for (let i = 0; i < 3; i++) {
-      try {
-        trending = await axios.get(`${base}/api/v1/movies/trending`);
-        break;
-      } catch (err) {
-        if (i === 2) throw err;
-        await new Promise((r) => setTimeout(r, 1000));
+    // 2. Movies trending & details (live TMDB connectivity verification)
+    if (health.data.checks.tmdbConfigured) {
+      let trending;
+      for (let i = 0; i < 3; i++) {
+        try {
+          trending = await axios.get(`${base}/api/v1/movies/trending`);
+          break;
+        } catch (err) {
+          if (i === 2) throw err;
+          await new Promise((r) => setTimeout(r, 1000));
+        }
       }
-    }
-    console.log(`✔ Trending Movies count: ${trending.data.length}, Cache Header: ${trending.headers['x-cache-source']}`);
+      console.log(`✔ Trending Movies count: ${trending.data.length}, Cache Header: ${trending.headers['x-cache-source']}`);
 
-    // 3. Movie details
-    let movie;
-    for (let i = 0; i < 3; i++) {
-      try {
-        movie = await axios.get(`${base}/api/v1/movies/1108427`);
-        break;
-      } catch (err) {
-        if (i === 2) throw err;
-        await new Promise((r) => setTimeout(r, 1000));
+      // 3. Movie details
+      let movie;
+      for (let i = 0; i < 3; i++) {
+        try {
+          movie = await axios.get(`${base}/api/v1/movies/1108427`);
+          break;
+        } catch (err) {
+          if (i === 2) throw err;
+          await new Promise((r) => setTimeout(r, 1000));
+        }
       }
+      console.log(`✔ Movie Details: ${movie.data.title}`);
+    } else {
+      console.log('ℹ Live TMDB proxy tests skipped (TMDB_API_KEY not configured in environment)');
     }
-    console.log(`✔ Movie Details: ${movie.data.title}`);
 
-    // 4. Recommendations
-    const recs = await axios.get(`${base}/api/v1/movies/1108427/recommendations?title=Moana`);
+    // 4. Recommendations (from ML dataset)
+    const recs = await axios.get(`${base}/api/v1/movies/19995/recommendations?title=Avatar`);
     console.log(`✔ Recommendations count: ${recs.data.length}, Source: ${recs.headers['x-recommendation-source']}`);
 
     // 5. Watchlist POST

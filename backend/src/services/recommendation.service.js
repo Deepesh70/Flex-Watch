@@ -65,8 +65,8 @@ const recommendationService = {
       }
     }
 
-    // 2. Fallback to TMDB similar movies if not found in offline dataset
-    if (movieId) {
+    // 2. Fallback to TMDB similar movies if not found in offline dataset and TMDB is configured
+    if (movieId && env.TMDB_API_KEY) {
       try {
         const { data: similar } = await tmdbService.getSimilarMovies(movieId);
         const formatted = (similar || []).slice(0, 8).map((m) => ({
