@@ -1,0 +1,31 @@
+{
+  "name": "flex-watch-server",
+  "version": "1.0.0",
+  "description": "Production-grade BFF and API server for Flex-Watch",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node tests/test_api.js",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@clerk/backend": "^1.24.1",
+    "@prisma/client": "^6.4.1",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.0.0",
+    "prisma": "^6.4.1"
+  }
+}

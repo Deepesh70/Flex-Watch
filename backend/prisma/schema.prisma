@@ -1,0 +1,67 @@
+// Prisma schema for Flex-Watch production-grade persistence layer
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String          @id @default(cuid())
+  clerkId   String          @unique
+  email     String?
+  name      String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  watchlist WatchlistItem[]
+  bookings  Booking[]
+}
+
+model WatchlistItem {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tmdbId      Int
+  mediaType   String   @default("movie") // "movie" or "tv"
+  title       String
+  overview    String?
+  posterPath  String?
+  backdropPath String?
+  voteAverage Float    @default(0)
+  releaseDate String?
+  addedAt     DateTime @default(now())
+
+  @@unique([userId, tmdbId, mediaType])
+  @@index([userId])
+  @@index([tmdbId])
+}
+
+model Booking {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyKey String   @unique
+  movieId        Int
+  movieTitle     String
+  showtime       DateTime
+  seats          String   // Comma-separated or JSON string of seat identifiers e.g. "A1,A2"
+  totalAmount    Float
+  status         String   @default("CONFIRMED") // "PENDING", "CONFIRMED", "CANCELLED"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([movieId])
+}
+
+model CacheEntry {
+  key       String   @id
+  value     String   // Serialized JSON payload
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}

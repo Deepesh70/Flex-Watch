@@ -1,111 +1,96 @@
 <p align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/Express-4.21-000000?style=for-the-badge&logo=express&logoColor=white" />
+  <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma&logoColor=white" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
+  <img src="https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" />
-  <img src="https://img.shields.io/badge/TMDB_API-Powered-01D277?style=for-the-badge&logo=themoviedatabase&logoColor=white" />
-  <img src="https://img.shields.io/badge/Python-ML-3776AB?style=for-the-badge&logo=python&logoColor=white" />
 </p>
 
-# 🎬 Flex-Watch — Movie Booking & Discovery Platform
+# 🎬 Flex-Watch — Enterprise Movie Discovery & Streaming Platform
 
-A responsive, feature-rich movie booking interface inspired by BookMyShow, built with **React 19** and **Tailwind CSS**. Browse trending movies, explore detailed cast & crew info, and receive **ML-powered movie recommendations** — all in a sleek, dark-themed UI.
+A production-grade, distributed movie discovery and streaming web platform inspired by BookMyShow and Netflix. Features a high-performance **React 19** frontend, an **Express BFF (Backend-For-Frontend)** with **Prisma ORM** persistence, multi-tier caching with **singleflight request deduplication**, on-demand **Python ML recommendations**, and full **Docker Compose** containerization.
 
 ---
 
-## ✨ Features
+## 🏛️ System Architecture
+
+```
+                                [Web Browser / Client]
+                                          │
+                         (Clerk Auth Token / Guest Session)
+                                          │
+                                          ▼
+                         [Nginx Reverse Proxy & Static Host]
+                                          │
+                                          ▼
+                        [Flex-Watch API Server (Node.js)]
+                 ┌────────────────────────┼────────────────────────┐
+                 ▼                        ▼                        ▼
+        [Security & Resilience]    [Persistence Layer]       [Catalog & ML Engine]
+        - Helmet, CORS Protection  - Prisma ORM              - In-Memory LRU Cache
+        - Rate Limiting            - SQLite (Local Dev)      - Singleflight Collapsing
+        - Structured Pino Logs     - PostgreSQL (Production) - Protected TMDB Secrets
+        - Trace IDs (x-request-id) - Watchlist & Bookings    - On-demand ML Serving
+```
+
+---
+
+## ✨ Production Highlights
 
 | Feature | Description |
 |---|---|
-| 🏠 **Home Page** | Hero carousel, trending movies, and entertainment event cards |
-| 🎥 **Movie Details** | Full movie info — synopsis, cast, crew, ratings, and more |
-| 🎭 **Plays & Events** | Dedicated section for live plays and entertainment events |
-| 🤖 **ML Recommendations** | Content-based movie recommendations powered by a Python ML pipeline |
-| 📱 **Responsive Design** | Fully responsive across desktop, tablet, and mobile viewports |
-| 🌙 **Dark Theme** | Premium dark UI with gold accent colors and smooth animations |
+| 🛡️ **Zero Secret Exposure** | TMDB API keys and Clerk credentials live strictly on the backend service. |
+| ⚡ **Resilient Caching** | In-memory cache + singleflight promise collapsing eliminates upstream TMDB rate limit spikes and cache stampedes. |
+| 🔄 **Database Persistence** | Watchlists ("My List") and booking drafts are persisted via Prisma ORM (SQLite for zero-config dev, PostgreSQL for cloud production). |
+| 🤖 **On-Demand ML Recommendations** | ML cosine-similarity matches (~4,800 titles) are served dynamically via API rather than bloated into the client bundle. |
+| 🎥 **Interactive Hero Carousel** | Live background video trailers with audio toggle, poster fallback for low-speed connections, and YouTube API sync. |
+| 🔍 **Real-Time Catalog & Search** | Live search and multi-genre filtering across trending, popular, upcoming, and top-rated movies & TV series. |
+| 🐳 **Full Containerization** | Multi-stage Dockerfiles and `docker-compose.yml` orchestrating PostgreSQL, Redis, Backend API, and Nginx. |
+| 🚦 **Automated CI Pipeline** | GitHub Actions validating backend migrations, linting, and 100% frontend test suites on PR/push. |
 
 ---
 
-## 🛠️ Tech Stack
-
-### Frontend
-| Technology | Version | Purpose |
-|---|---|---|
-| [React](https://react.dev/) | 19 | UI framework |
-| [Tailwind CSS](https://tailwindcss.com/) | 3.4 | Utility-first styling |
-| [React Router](https://reactrouter.com/) | 7 | Client-side routing |
-| [Axios](https://axios-http.com/) | 1.13 | HTTP client for TMDB API |
-| [React Slick](https://react-slick.neostack.com/) | 0.31 | Carousel / slider components |
-| [React Icons](https://react-icons.github.io/react-icons/) | 5.5 | Icon library |
-| [Headless UI](https://headlessui.com/) | 2.2 | Accessible UI primitives |
-
-### Machine Learning
-| Technology | Purpose |
-|---|---|
-| Python 3 | Recommendation script runtime |
-| pandas | Data manipulation |
-| scikit-learn | Similarity computation (cosine similarity) |
-
-### API
-| Service | Purpose |
-|---|---|
-| [TMDB API](https://www.themoviedb.org/documentation/api) | Movie data, images, cast & crew info |
-
----
-
-## 🧠 Machine Learning Integration
-
-The project includes a **Content-Based Recommendation System** under `Recommendation_system/`.
-
-### How It Works
-
-1. **`export_data.py`** loads pre-trained pickled data (`movies_dict.pkl` + `similarity.pkl`).
-2. For each movie, it computes the **top 5 most similar movies** using a cosine similarity matrix.
-3. Results are exported as a static `src/recommendations.json` file consumed by the React frontend.
-
-### Limitations
-
-> [!NOTE]
-> - Recommendations only work for movies present in the training dataset (~4,800 movies).
-> - Movie title matching is **case-sensitive and exact-match** based.
-> - To update recommendations, re-run the Python script after updating the pickle files.
-
----
-
-## 📁 Project Structure
+## 📁 Clean Monorepo Directory Structure
 
 ```
 Flex-Watch/
-├── public/                     # Static assets
-├── src/
-│   ├── components/
-│   │   ├── CategoryFilter/     # Genre / category filtering
-│   │   ├── Entertainement/     # Entertainment event cards
-│   │   ├── FeaturedMovie/      # Featured movie spotlight
-│   │   ├── Footer/             # Site footer
-│   │   ├── HeroCarousal/       # Hero banner carousel
-│   │   ├── MovieHero/          # Movie detail hero section
-│   │   ├── Navbar/             # Navigation bar
-│   │   ├── PostSlider/         # Horizontal poster slider
-│   │   ├── context/            # React context providers
-│   │   └── poster/             # Poster card component
-│   ├── layouts/
-│   │   ├── Default.layout.jsx  # Default page layout
-│   │   └── Movie.layout.jsx    # Movie detail page layout
-│   ├── pages/
-│   │   ├── Home.page.jsx       # Home page
-│   │   ├── Movie.page.jsx      # Movie detail page
-│   │   └── play.page.jsx       # Plays & events page
-│   ├── recommendations.json    # ML-generated recommendations
-│   ├── App.js                  # Root component & routing
-│   ├── index.js                # Entry point
-│   └── index.css               # Global styles & Tailwind directives
-├── Recommendation_system/
-│   ├── export_data.py          # ML script to generate recommendations
-│   ├── movies_dict.pkl         # Pickled movie dataset
-│   └── similarity.pkl          # Pickled cosine similarity matrix
-├── tailwind.config.js          # Tailwind theme customization
-├── postcss.config.js           # PostCSS configuration
-├── package.json
-└── .env                        # TMDB API key (not committed)
+├── .github/
+│   ├── workflows/ci.yml         # GitHub Actions CI (validates backend & frontend)
+│   └── PULL_REQUEST_TEMPLATE.md # Standard PR checklist
+├── frontend/                    # ⚛️ React 19 Client Application
+│   ├── src/                     # Components, pages, layouts, and services
+│   ├── public/                  # Static assets (HTML, favicons, manifests)
+│   ├── Dockerfile               # Multi-stage production Nginx container
+│   ├── nginx.conf               # Nginx reverse proxy & gzip configuration
+│   ├── package.json             # Frontend dependencies & scripts
+│   └── tailwind.config.js       # Custom cinematic dark theme
+├── backend/                     # 🚀 Node.js/Express BFF & API Server
+│   ├── prisma/
+│   │   └── schema.prisma        # Prisma DB schema (User, Watchlist, Booking)
+│   ├── data/
+│   │   └── recommendations.json # ML recommendation lookup table (~718 KB)
+│   ├── src/
+│   │   ├── config/env.js        # Zod environment schema & validation
+│   │   ├── db/prisma.js         # Singleton Prisma client
+│   │   ├── middlewares/         # Logger (Pino), Auth, ErrorHandler, RateLimiter
+│   │   ├── routes/              # Health, Movies, Series, Search, Watchlist
+│   │   ├── services/            # Cache (Singleflight), TMDB, Recommendations
+│   │   └── server.js            # Express application bootstrap
+│   ├── tests/
+│   │   └── test_api.js          # Backend integration smoke tests
+│   ├── Dockerfile               # Multi-stage backend container (non-root)
+│   └── package.json             # Backend dependencies & scripts
+├── ml-engine/                   # 🧠 Python Content-Based Recommendation Pipeline
+│   ├── export_data.py           # Cosine similarity export script
+│   ├── movies_dict.pkl          # Pickled movie dataset
+│   └── similarity.pkl           # Pickled cosine similarity matrix
+├── docs/                        # Architecture, setup, and feature guides
+├── docker-compose.yml           # Production stack (Postgres + Redis + API + Web)
+├── package.json                 # Root monorepo workspaces orchestrator
+└── .gitignore                   # Multi-tier ignore rules (DBs, envs, logs)
 ```
 
 ---
@@ -113,70 +98,91 @@ Flex-Watch/
 ## 🚀 Getting Started
 
 ### Prerequisites
+- **Node.js**: v18 or higher (v20+ recommended)
+- **npm**: v9+
+- **Docker & Docker Compose** *(optional, for containerized run)*
 
-- [Node.js](https://nodejs.org/) v14 or higher
-- [npm](https://www.npmjs.com/)
-- [Python 3](https://www.python.org/) *(only if regenerating ML recommendations)*
+---
 
-### Installation
+### Method 1: Local Monorepo Development (One-Command Run)
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/your-username/Flex-Watch.git
    cd Flex-Watch
    ```
 
-2. **Install dependencies**:
+2. **Setup Backend Environment**:
+   ```bash
+   cd backend
+   cp .env.example .env
+   npm install
+   npx prisma db push
+   cd ..
+   ```
+
+3. **Install Root Workspaces Dependencies**:
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**:
-
-   Create a `.env` file in the project root:
-   ```env
-   REACT_APP_API_KEY=your_tmdb_api_key_here
-   ```
-   > Get a free API key at [themoviedb.org](https://www.themoviedb.org/settings/api).
-
-4. **Start the development server**:
+4. **Run Full-Stack (Frontend + Backend Concurrently)**:
    ```bash
-   npm start
+   npm run dev
    ```
-   The app will open at [http://localhost:3000](http://localhost:3000).
+   - **Frontend**: [http://localhost:3000](http://localhost:3000)
+   - **Backend API**: [http://localhost:5000](http://localhost:5000)
 
-### Regenerating ML Recommendations *(optional)*
+*Or run individual services:*
+- `npm run dev:frontend` (React client only)
+- `npm run dev:backend` (Express API only)
+- `npm run db:studio` (Open Prisma visual database GUI)
+
+---
+
+### Method 2: Docker Compose (Full Production Stack)
+
+To run the complete production topology (PostgreSQL, Redis, Backend API, and Nginx reverse proxy):
 
 ```bash
-cd Recommendation_system
-pip install pandas scikit-learn
-python export_data.py
+docker compose up --build -d
 ```
 
-This will regenerate `src/recommendations.json` from the pickle files.
+- **Frontend Web Application**: [http://localhost](http://localhost)
+- **Backend API Probes**: [http://localhost/health/ready](http://localhost/health/ready)
+- **PostgreSQL Database**: Port `5432`
+- **Redis Cache**: Port `6379`
 
 ---
 
-## 📦 Available Scripts
+## 🧪 Testing
 
-| Command | Description |
-|---|---|
-| `npm start` | Run the dev server on port 3000 |
-| `npm run build` | Create a production build in `build/` |
-| `npm test` | Run the test suite |
-| `npm run eject` | Eject from Create React App *(irreversible)* |
+Run backend API smoke tests:
+```bash
+npm run test:backend
+```
+
+Run frontend unit & integration tests:
+```bash
+npm run test:frontend
+```
 
 ---
 
-## 🎨 Design System
+## 📡 Core API Endpoints
 
-The app uses a **custom dark theme** defined in `tailwind.config.js`:
-
-- **Dark palette**: Deep navy/charcoal tones (`#050709` → `#718096`)
-- **Accent gold**: `#f5c518` with hover/glow states
-- **Accent red**: `#e50914` for CTAs
-- **Font**: Inter (Google Fonts)
-- **Animations**: Fade-in, slide-up, and pulse-glow keyframes
+| Method | Endpoint | Description | Cache Policy |
+|---|---|---|---|
+| `GET` | `/health/live` | Liveness check probe | None |
+| `GET` | `/health/ready` | Deep check (DB, Cache, TMDB) | Real-time |
+| `GET` | `/api/v1/movies/trending` | Weekly/daily trending movies | 30 mins |
+| `GET` | `/api/v1/movies/popular` | Popular movies catalog | 1 hour |
+| `GET` | `/api/v1/movies/top-rated` | Top-rated movies catalog | 2 hours |
+| `GET` | `/api/v1/movies/:id` | Full movie details | 24 hours |
+| `GET` | `/api/v1/movies/:id/recommendations` | Dynamic ML recommendations | On-demand |
+| `GET` | `/api/v1/watchlist` | Retrieve user watchlist | Authenticated/Guest |
+| `POST` | `/api/v1/watchlist` | Add movie to persistent watchlist | Authenticated/Guest |
+| `DELETE` | `/api/v1/watchlist/:tmdbId` | Remove item from watchlist | Authenticated/Guest |
 
 ---
 
@@ -185,23 +191,11 @@ The app uses a **custom dark theme** defined in `tailwind.config.js`:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+4. Push to your branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request (PR template will guide verification)
 
 ---
 
 ## 📄 License
 
 This project is for educational and personal use.
-
----
-
-## 📚 Additional Documentation
-
-Detailed project documentation is available in [`/docs`](./docs/README.md), including setup, architecture, and feature walkthrough guides.
-
----
-
-<p align="center">
-  Made with ❤️ using React & Tailwind CSS
-</p>
