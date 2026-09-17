@@ -10,6 +10,9 @@ jobs:
   ci-checks:
     name: Fullstack CI (Backend & Frontend)
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: 'file:./dev.db'
+      CI: 'true'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
