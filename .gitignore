@@ -10,23 +10,25 @@ server/node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
-server/.env
-server/.env.local
-server/.env.*
+backend/.env
+backend/.env.local
+backend/.env.*
 !.env.example
-!server/.env.example
+!backend/.env.example
 
 # Local SQLite & Databases
 *.db
 *.db-journal
 dev.db
-server/dev.db
-server/prisma/*.db
-server/prisma/*.db-journal
+backend/dev.db
+backend/prisma/*.db
+backend/prisma/*.db-journal
 
 # Production Builds
-/build
-/dist
+build/
+dist/
+**/build/
+**/dist/
 
 # Testing & Coverage
 /coverage

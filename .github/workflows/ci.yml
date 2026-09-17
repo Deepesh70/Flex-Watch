@@ -7,56 +7,42 @@ on:
     branches: [main, master]
 
 jobs:
-  backend-checks:
-    name: Backend CI
+  ci-checks:
+    name: Fullstack CI (Backend & Frontend)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install Backend Dependencies
+      - name: Install Monorepo Dependencies
         run: npm ci
 
+      # --- Backend Checks ---
       - name: Validate Prisma Schema
-        run: npx prisma validate
-
-      - name: Push Test SQLite DB & Generate Client
-        run: npx prisma db push
+        run: npx prisma validate --schema=backend/prisma/schema.prisma
         env:
           DATABASE_URL: 'file:./dev.db'
 
-  frontend-checks:
-    name: Frontend CI
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Initialize Test Database & Generate Prisma Client
+        run: npm run db:push
+        env:
+          DATABASE_URL: 'file:./dev.db'
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+      - name: Run Backend Tests
+        run: npm run test:backend
+        env:
+          DATABASE_URL: 'file:./dev.db'
 
-      - name: Install Frontend Dependencies
-        run: npm ci
-
-      - name: Run Tests
-        run: npm test -- --watchAll=false
+      # --- Frontend Checks ---
+      - name: Run Frontend Tests
+        run: npm run test:frontend
         env:
           CI: true
 
