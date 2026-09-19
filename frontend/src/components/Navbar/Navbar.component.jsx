@@ -6,7 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import tmdbService from '../../services/tmdb';
 import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 
-const CLERK_KEY = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+import { CLERK_PUBLISHABLE_KEY as CLERK_KEY } from '../../config/env';
 
 const Navbar = () => {
   const { search, setSearch, myList } = useContext(MovieContext);

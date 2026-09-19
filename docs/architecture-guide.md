@@ -31,8 +31,8 @@ This document outlines the technical design, data flows, and engineering pattern
 
 Flex-Watch is structured as a standard **npm Workspaces Monorepo**:
 
-* **`frontend/`**: Pure Single Page Application (SPA). Zero backend credentials or database knowledge. Interacts only with `/api/v1/*`.
-* **`backend/`**: Node.js/Express BFF and data service. Handles upstream third-party calls, caching, authentication verification, and relational persistence.
+* **`frontend/`**: Modern Single Page Application powered by **React 19** and **Vite 6** with **Vitest**. Features sub-second HMR, native ESM bundling, and zero secret exposure. Handles guest identity persistence (`x-guest-id`) and a frictionless showcase Demo Mode when Clerk keys are omitted.
+* **`backend/`**: Node.js/Express BFF and data service. Handles upstream third-party calls, singleflight caching, authentication verification, and relational persistence.
 * **`ml-engine/`**: Isolated Python data science workspace for training and exporting recommendation matrices.
 
 ---

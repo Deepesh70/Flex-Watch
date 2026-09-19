@@ -1,12 +1,21 @@
 import axios from 'axios';
+import { getGuestId } from './guestAuth';
+import { BACKEND_URL } from '../config/env';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 // 1. Dedicated Backend API client (Proxy + Persistence)
 export const backendClient = axios.create({
   baseURL: `${BACKEND_URL}/api/v1`,
   timeout: 10000,
+});
+
+// Attach x-guest-id header automatically to persist guest sessions
+backendClient.interceptors.request.use((config) => {
+  if (!config.headers['Authorization']) {
+    config.headers['x-guest-id'] = getGuestId();
+  }
+  return config;
 });
 
 // 2. Direct TMDB fallback client (if backend proxy is unreachable)

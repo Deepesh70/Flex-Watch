@@ -58,6 +58,10 @@ async function testAll() {
     const recs = await axios.get(`${base}/api/v1/movies/19995/recommendations?title=Avatar`);
     console.log(`✔ Recommendations count: ${recs.data.length}, Source: ${recs.headers['x-recommendation-source']}`);
 
+    // 4b. Recommendations Fallback (for title not in offline ML dataset, testing env reference)
+    const recsFallback = await axios.get(`${base}/api/v1/movies/999999999/recommendations?title=UnknownMovieXYZ`);
+    console.log(`✔ Fallback recommendations handled gracefully, Source: ${recsFallback.headers['x-recommendation-source']}`);
+
     // 5. Watchlist POST
     const added = await axios.post(`${base}/api/v1/watchlist`, {
       tmdbId: 1108427,

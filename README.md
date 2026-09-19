@@ -1,5 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white" />
   <img src="https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
   <img src="https://img.shields.io/badge/Express-4.21-000000?style=for-the-badge&logo=express&logoColor=white" />
   <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma&logoColor=white" />
@@ -11,7 +12,7 @@
 
 # 🎬 Flex-Watch — Enterprise Movie Discovery & Streaming Platform
 
-A production-grade, distributed movie discovery and streaming web platform inspired by BookMyShow and Netflix. Features a high-performance **React 19** frontend, an **Express BFF (Backend-For-Frontend)** with **Prisma ORM** persistence, multi-tier caching with **singleflight request deduplication**, on-demand **Python ML recommendations**, and full **Docker Compose** containerization.
+A production-grade, distributed movie discovery and streaming web platform inspired by BookMyShow and Netflix. Features a high-performance **React 19** frontend powered by **Vite 6** and **Vitest**, an **Express BFF (Backend-For-Frontend)** with **Prisma ORM** persistence, multi-tier caching with **singleflight request deduplication**, on-demand **Python ML recommendations**, and full **Docker Compose** containerization.
 
 ---
 
@@ -60,7 +61,7 @@ Flex-Watch/
 ├── .github/
 │   ├── workflows/ci.yml         # GitHub Actions CI (validates backend & frontend)
 │   └── PULL_REQUEST_TEMPLATE.md # Standard PR checklist
-├── frontend/                    # ⚛️ React 19 Client Application
+├── frontend/                    # ⚛️ React 19 + Vite 6 Client Application
 │   ├── src/                     # Components, pages, layouts, and services
 │   ├── public/                  # Static assets (HTML, favicons, manifests)
 │   ├── Dockerfile               # Multi-stage production Nginx container

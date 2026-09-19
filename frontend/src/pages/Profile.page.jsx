@@ -21,7 +21,7 @@ import {
 } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
-const CLERK_KEY = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+import { CLERK_PUBLISHABLE_KEY as CLERK_KEY } from '../config/env';
 
 // Internal Profile Content View
 const ProfileContent = ({ user, isClerk = false, onSignOut }) => {

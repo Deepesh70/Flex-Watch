@@ -60,7 +60,7 @@ CORS_ORIGIN=http://localhost:3000
 
 ## 3. Method 1: Local Development (Fastest, Zero-Config)
 
-This mode runs the backend on Node.js using a local zero-config **SQLite** database (`backend/dev.db`), and the React frontend on the webpack dev server.
+This mode runs the backend on Node.js using a local zero-config **SQLite** database (`backend/dev.db`), and the React frontend on the lightning-fast **Vite 6** HMR dev server.
 
 ### Step 1: Install All Monorepo Dependencies
 From the repository root:
