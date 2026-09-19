@@ -5,8 +5,10 @@ import { MovieContext } from '../context/Movies.context';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import tmdbService from '../../services/tmdb';
 import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
+import { getMovieUrl } from '../../utils/slug';
 
 import { CLERK_PUBLISHABLE_KEY as CLERK_KEY } from '../../config/env';
+
 
 const Navbar = () => {
   const { search, setSearch, myList } = useContext(MovieContext);
@@ -53,12 +55,13 @@ const Navbar = () => {
     { name: 'TV Series', path: '/series' },
   ];
 
-  const handleSuggestionClick = (movieId) => {
+  const handleSuggestionClick = (item) => {
     setSearch('');
     setSearchOpen(false);
     setLiveSuggestions([]);
-    navigate(`/movie/${movieId}`);
+    navigate(getMovieUrl(item), { state: { movieId: item.id } });
   };
+
 
   return (
     <header
@@ -159,9 +162,10 @@ const Navbar = () => {
                     {liveSuggestions.map((item) => (
                       <button
                         key={item.id}
-                        onClick={() => handleSuggestionClick(item.id)}
+                        onClick={() => handleSuggestionClick(item)}
                         className="w-full flex items-center gap-3 p-2.5 hover:bg-white/5 transition-colors text-left"
                       >
+
                         <img
                           src={
                             item.poster_path

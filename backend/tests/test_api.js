@@ -50,6 +50,13 @@ async function testAll() {
         }
       }
       console.log(`✔ Movie Details: ${movie.data.title}`);
+
+      // 3b. Slug-based movie resolution (resolves "moana-2" or "moana" to movie object)
+      const slugMovie = await axios.get(`${base}/api/v1/movies/moana-2`);
+      if (!slugMovie.data || !slugMovie.data.id) {
+        throw new Error('Slug-based movie resolution failed');
+      }
+      console.log(`✔ Movie Slug Resolution ("moana-2"): ${slugMovie.data.title} (ID: ${slugMovie.data.id})`);
     } else {
       console.log('ℹ Live TMDB proxy tests skipped (TMDB_API_KEY not configured in environment)');
     }
@@ -229,6 +236,7 @@ async function testAll() {
 }
 
 testAll().catch((e) => {
-  console.error('Test Failed:', e.response?.data || e.message);
+  console.error('Test Failed:', e.stack || e.response?.data || e.message);
   process.exit(1);
 });
+

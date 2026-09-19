@@ -59,8 +59,43 @@ router.get('/trending', async (req, res, next) => {
   }
 });
 
-// 2. Movie Specific Endpoints
+// 2. Movie Identifier Resolver (Supports both numeric IDs and title slugs e.g. "moana-2")
+
+router.param('id', async (req, res, next, id) => {
+  // 1. If already numeric, proceed directly
+  if (/^\d+$/.test(id)) {
+    return next();
+  }
+
+  try {
+    // 2. If slug ends with an ID (e.g. "moana-2-1108427"), extract it
+    const trailingIdMatch = id.match(/-(\d+)$/);
+    if (trailingIdMatch) {
+      req.params.id = trailingIdMatch[1];
+      return next();
+    }
+
+    // 3. Otherwise, resolve slug title by searching catalog
+    const searchQuery = id.replace(/[-_]+/g, ' ').trim();
+    const searchResult = await tmdbService.searchMovies(searchQuery);
+    const matched = searchResult.data && searchResult.data[0];
+    if (!matched) {
+      return res.status(404).json({
+        title: 'Not Found',
+        detail: `Movie matching "${id}" not found.`,
+      });
+    }
+
+    req.params.id = String(matched.id);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 3. Movie Specific Endpoints
 router.get('/:id', async (req, res, next) => {
+
   try {
     const { id } = req.params;
     const result = await tmdbService.getMovieDetails(id);

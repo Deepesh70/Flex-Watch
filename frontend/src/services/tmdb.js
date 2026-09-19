@@ -66,8 +66,26 @@ export const tmdbService = {
 
   getMovieDetails: async (id) => {
     if (!id) return null;
-    return fetchWithFallback(`/movies/${id}`, `/movie/${id}`, (data) => data || null);
+    let resolvedId = id;
+    // If slug provided instead of numeric ID, resolve via backend or search
+    if (isNaN(Number(id))) {
+      try {
+        const res = await backendClient.get(`/movies/${id}`);
+        if (res.data) return res.data;
+      } catch {
+        try {
+          const searchResults = await tmdbService.searchMovies(String(id).replace(/[-_]+/g, ' '));
+          if (searchResults && searchResults.length > 0) {
+            resolvedId = searchResults[0].id;
+          }
+        } catch {
+          // fallback to id
+        }
+      }
+    }
+    return fetchWithFallback(`/movies/${resolvedId}`, `/movie/${resolvedId}`, (data) => data || null);
   },
+
 
   getMovieCredits: async (id) => {
     if (!id) return { cast: [], crew: [] };

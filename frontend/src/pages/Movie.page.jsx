@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import MovielayoutHOC from '../layouts/Movie.layout';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { MovieContext } from '../components/context/Movies.context';
 import { FaStar, FaFilm, FaArrowLeft } from 'react-icons/fa';
 import PostSlider from '../components/PostSlider/PostSlider.component';
@@ -10,6 +10,7 @@ import { MovieDetailSkeleton } from '../components/common/LoadingSkeleton';
 
 const MoviePage = () => {
   const { id } = useParams();
+  const location = useLocation();
   const { movie, setMovie } = useContext(MovieContext);
   const [cast, setCast] = useState([]);
   const [similarMovies, setSimilarMovies] = useState([]);
@@ -23,11 +24,14 @@ const MoviePage = () => {
       setLoading(true);
       window.scrollTo(0, 0);
       try {
-        const movieData = await tmdbService.getMovieDetails(id);
+        const identifier = location.state?.movieId || id;
+        const movieData = await tmdbService.getMovieDetails(identifier);
+        const resolvedId = movieData?.id || identifier;
+
         const [creditsData, similarData, recsData] = await Promise.all([
-          tmdbService.getMovieCredits(id),
-          tmdbService.getSimilarMovies(id),
-          tmdbService.getRecommendations(id, movieData?.title),
+          tmdbService.getMovieCredits(resolvedId),
+          tmdbService.getSimilarMovies(resolvedId),
+          tmdbService.getRecommendations(resolvedId, movieData?.title),
         ]);
 
         if (isMounted) {
@@ -50,7 +54,8 @@ const MoviePage = () => {
     return () => {
       isMounted = false;
     };
-  }, [id, setMovie]);
+  }, [id, location.state?.movieId, setMovie]);
+
 
   if (loading) {
     return <MovieDetailSkeleton />;

@@ -2,6 +2,8 @@ import React, { useContext } from 'react';
 import { FaStar, FaPlay, FaInfoCircle } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { MovieContext } from '../context/Movies.context';
+import { getMovieUrl } from '../../utils/slug';
+
 
 const FeaturedMovie = ({ movie }) => {
   const { openTrailer } = useContext(MovieContext);
@@ -74,12 +76,14 @@ const FeaturedMovie = ({ movie }) => {
               <span>Watch Trailer</span>
             </button>
             <Link
-              to={`/movie/${movie.id}`}
+              to={getMovieUrl(movie)}
+              state={{ movieId: movie.id }}
               className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 border border-white/10"
             >
               <FaInfoCircle className="w-4 h-4" />
               <span>More Details</span>
             </Link>
+
           </div>
         </div>
       </div>

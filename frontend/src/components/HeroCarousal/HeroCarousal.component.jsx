@@ -14,6 +14,8 @@ import {
 import { MovieContext } from '../context/Movies.context';
 import tmdbService from '../../services/tmdb';
 import { HeroSkeleton } from '../common/LoadingSkeleton';
+import { getMovieUrl } from '../../utils/slug';
+
 
 const YOUTUBE_ORIGIN = 'https://www.youtube.com';
 
@@ -371,11 +373,13 @@ const HeroCarousal = () => {
                         </button>
 
                         <Link
-                          to={`/movie/${movie.id}`}
+                          to={getMovieUrl(movie)}
+                          state={{ movieId: movie.id }}
                           className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 border border-white/10 backdrop-blur-md"
                         >
                           <span>More Info</span>
                         </Link>
+
 
                         <button
                           onClick={() => toggleMyList && toggleMyList(movie)}

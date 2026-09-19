@@ -30,14 +30,20 @@ Located at the top of the homepage (`frontend/src/components/HeroCarousal/`):
 
 ---
 
-## 4. Movie Details Experience
+## 4. Movie Details Experience & Semantic URL Slugs
 
-Opening any movie (`/movie/:id`) navigates to a rich details layout (`frontend/src/pages/Movie.page.jsx`):
+Opening any movie navigates to a rich details layout with **clean, SEO-friendly semantic URL slugs** (`/movie/:slug`, e.g. `/movie/moana-2` or `/movie/spider-man-across-the-spider-verse`):
 
+* **Semantic URLs**: All posters, hero banners, and search results render human-readable movie name URLs without exposing raw database IDs in the browser address bar.
+* **Dual-Tier Resolution**:
+  - In-app navigation uses `state: { movieId: movie.id }` for instant 0ms transitions.
+  - Direct browser visits, bookmarks, and links without state automatically resolve the title slug via backend catalog lookup.
+  - Backwards-compatible with legacy numeric IDs (`/movie/1108427`).
 * **Cinematic Banner**: High-resolution backdrop image with dark vignettes, title, release year, runtime, and average rating score.
 * **Trailer Streaming Modal**: Clicking "Watch Trailer" opens an accessible video modal (`frontend/src/components/common/MovieModal.jsx`) streaming the official YouTube trailer fetched dynamically from the backend.
 * **Cast & Crew Shelves**: Horizontal slider presenting actor profile avatars, character names, and crew credits.
 * **Similar Titles**: Algorithmically matched similar movies fetched from `/api/v1/movies/:id/similar`.
+
 
 ---
 
