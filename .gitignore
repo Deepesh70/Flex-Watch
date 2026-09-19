@@ -49,3 +49,5 @@ similarity.pkl
 Thumbs.db
 .vscode/
 .idea/
+.agents/*
+brag-output/*
