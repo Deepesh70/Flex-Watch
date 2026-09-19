@@ -151,9 +151,43 @@ erDiagram
     }
 ```
 
+### Booking Subsystem & Idempotency Flow
+
+The booking pipeline guarantees safe transactions even under duplicate clicks or spotty mobile connections:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Frontend Client
+    participant API as Booking API (/api/v1/bookings)
+    participant DB as Prisma (SQLite/Postgres)
+
+    Client->>API: GET /bookings/occupied?movieId=...&showtime=...
+    API->>DB: Query CONFIRMED bookings for showtime
+    DB-->>API: Return occupied seat array
+    API-->>Client: ["A1", "A2", "D4"]
+
+    Client->>API: POST /bookings (seats, showtime, idempotencyKey)
+    API->>DB: Check idempotencyKey in DB
+    alt Key exists (Replay)
+        DB-->>API: Return existing booking
+        API-->>Client: HTTP 200 (Existing Booking Object)
+    else New Key
+        API->>DB: Check if any requested seats overlap with existing CONFIRMED bookings
+        alt Seat Collision Detected
+            API-->>Client: HTTP 409 Conflict ("Seat(s) already reserved")
+        else Seats Available
+            API->>DB: Create Booking record (status: CONFIRMED)
+            DB-->>API: Persisted Booking
+            API-->>Client: HTTP 201 Created (Digital Ticket Payload)
+        end
+    end
+```
+
 ### Storage Engines:
 * **Development**: Zero-setup **SQLite** (`dev.db`).
 * **Production**: **PostgreSQL 16** container or managed cloud database (Neon, Supabase, AWS RDS).
+
 
 ---
 

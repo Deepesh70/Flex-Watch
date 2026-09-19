@@ -45,12 +45,14 @@ A production-grade, distributed movie discovery and streaming web platform inspi
 |---|---|
 | 🛡️ **Zero Secret Exposure** | TMDB API keys and Clerk credentials live strictly on the backend service. |
 | ⚡ **Resilient Caching** | In-memory cache + singleflight promise collapsing eliminates upstream TMDB rate limit spikes and cache stampedes. |
+| 🎟️ **Cinema Seat Booking** | BookMyShow-style curved screen seat selector with tiered pricing (VIP/Club/Standard), conflict guards (409), idempotent bookings, and digital printable ticket passes. |
 | 🔄 **Database Persistence** | Watchlists ("My List") and booking drafts are persisted via Prisma ORM (SQLite for zero-config dev, PostgreSQL for cloud production). |
 | 🤖 **On-Demand ML Recommendations** | ML cosine-similarity matches (~4,800 titles) are served dynamically via API rather than bloated into the client bundle. |
 | 🎥 **Interactive Hero Carousel** | Live background video trailers with audio toggle, poster fallback for low-speed connections, and YouTube API sync. |
 | 🔍 **Real-Time Catalog & Search** | Live search and multi-genre filtering across trending, popular, upcoming, and top-rated movies & TV series. |
 | 🐳 **Full Containerization** | Multi-stage Dockerfiles and `docker-compose.yml` orchestrating PostgreSQL, Redis, Backend API, and Nginx. |
 | 🚦 **Automated CI Pipeline** | GitHub Actions validating backend migrations, linting, and 100% frontend test suites on PR/push. |
+
 
 ---
 

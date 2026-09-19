@@ -12,6 +12,7 @@ const movieRoutes = require('./routes/movie.routes');
 const seriesRoutes = require('./routes/series.routes');
 const searchRoutes = require('./routes/search.routes');
 const watchlistRoutes = require('./routes/watchlist.routes');
+const bookingRoutes = require('./routes/booking.routes');
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/v1/movies', movieRoutes);
 app.use('/api/v1/series', seriesRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/watchlist', watchlistRoutes);
+app.use('/api/v1/bookings', bookingRoutes);
 
 // 5. 404 Route Handler
 app.use((req, res) => {

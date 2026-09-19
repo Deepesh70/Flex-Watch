@@ -106,7 +106,82 @@ async function testAll() {
     });
     console.log(`✔ OptionalAuth gracefully handles invalid token without 401 (items: ${optionalRes.data.length})`);
 
-    // 10. CacheService LRU eviction test
+    // 10. Booking API Integration Tests
+    const testShowtime = new Date(Date.now() + 86400000).toISOString();
+    const testIdempotencyKey = `idemp_test_${Date.now()}`;
+
+    // 10a. Create Booking
+    const bookingRes = await axios.post(`${base}/api/v1/bookings`, {
+      idempotencyKey: testIdempotencyKey,
+      movieId: 1108427,
+      movieTitle: 'Moana',
+      showtime: testShowtime,
+      seats: ['A1', 'A2'],
+      totalAmount: 30.0,
+    }, {
+      headers: { 'x-guest-id': 'test_architect_user' }
+    });
+    console.log(`✔ Booking POST created: ${bookingRes.data.id} for seats [${bookingRes.data.seats.join(', ')}]`);
+
+    // 10b. Idempotent Replay
+    const replayRes = await axios.post(`${base}/api/v1/bookings`, {
+      idempotencyKey: testIdempotencyKey,
+      movieId: 1108427,
+      movieTitle: 'Moana',
+      showtime: testShowtime,
+      seats: ['A1', 'A2'],
+      totalAmount: 30.0,
+    }, {
+      headers: { 'x-guest-id': 'test_architect_user' }
+    });
+    if (replayRes.headers['x-idempotent-replay'] !== 'true' || replayRes.data.id !== bookingRes.data.id) {
+      throw new Error('Idempotent replay failed');
+    }
+    console.log('✔ Booking idempotent replay handled successfully');
+
+    // 10c. Conflict Check (Attempting to book seat A2 which is already confirmed)
+    try {
+      await axios.post(`${base}/api/v1/bookings`, {
+        idempotencyKey: `idemp_conflict_${Date.now()}`,
+        movieId: 1108427,
+        movieTitle: 'Moana',
+        showtime: testShowtime,
+        seats: ['A2', 'A3'],
+        totalAmount: 30.0,
+      }, {
+        headers: { 'x-guest-id': 'test_architect_user' }
+      });
+      throw new Error('Expected 409 Conflict for overlapping seat');
+    } catch (err) {
+      if (err.response && err.response.status === 409) {
+        console.log(`✔ Booking conflict rejection (409) succeeded: ${err.response.data.detail}`);
+      } else {
+        throw err;
+      }
+    }
+
+    // 10d. Occupied seats query
+    const occupiedRes = await axios.get(`${base}/api/v1/bookings/occupied`, {
+      params: { movieId: 1108427, showtime: testShowtime },
+    });
+    if (!occupiedRes.data.occupiedSeats.includes('A1') || !occupiedRes.data.occupiedSeats.includes('A2')) {
+      throw new Error('Occupied seats query did not include reserved seats');
+    }
+    console.log(`✔ Occupied seats query returned: [${occupiedRes.data.occupiedSeats.join(', ')}]`);
+
+    // 10e. List user bookings
+    const userBookings = await axios.get(`${base}/api/v1/bookings`, {
+      headers: { 'x-guest-id': 'test_architect_user' }
+    });
+    console.log(`✔ User bookings retrieved (count: ${userBookings.data.length})`);
+
+    // 10f. Cancel booking
+    const cancelRes = await axios.delete(`${base}/api/v1/bookings/${bookingRes.data.id}`, {
+      headers: { 'x-guest-id': 'test_architect_user' }
+    });
+    console.log(`✔ Booking cancelled: ${cancelRes.data.bookingId} (status: ${cancelRes.data.status})`);
+
+    // 11. CacheService LRU eviction test
     const { CacheService } = require('../src/services/cache.service');
     const testCache = new CacheService(2);
     testCache.set('k1', 'v1');
