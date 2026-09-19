@@ -5,6 +5,8 @@ const { env } = require('./config/env');
 const { logger, httpLogger } = require('./middlewares/logger');
 const { apiLimiter } = require('./middlewares/rateLimiter');
 const { errorHandler } = require('./middlewares/errorHandler');
+const { client, metricsMiddleware } = require('./services/metrics.service');
+const { setupSwagger } = require('./docs/swagger');
 
 // Route imports
 const healthRoutes = require('./routes/health.routes');
@@ -12,6 +14,7 @@ const movieRoutes = require('./routes/movie.routes');
 const seriesRoutes = require('./routes/series.routes');
 const searchRoutes = require('./routes/search.routes');
 const watchlistRoutes = require('./routes/watchlist.routes');
+const bookingRoutes = require('./routes/booking.routes');
 
 const app = express();
 
@@ -32,6 +35,7 @@ if (env.TRUST_PROXY) {
 // 1. Security & Core Middlewares
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false, // Allows Swagger UI interactive exploration
 }));
 app.use(cors({
   origin: [env.CORS_ORIGIN, 'http://localhost:3000', 'http://127.0.0.1:3000'],
@@ -40,18 +44,32 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '1mb' }));
 app.use(httpLogger);
+app.use(metricsMiddleware);
 
-// 2. Health Probes (un-rate-limited for container health checks)
+// 2. Health & Observability Probes (un-rate-limited for monitoring)
 app.use('/health', healthRoutes);
+app.get('/metrics', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', client.register.contentType);
+    res.send(await client.register.metrics());
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
-// 3. Rate-limited API routes
+// 3. Interactive Swagger Documentation (/api/docs & /api/docs.json)
+setupSwagger(app);
+
+// 4. Rate-limited API routes
 app.use('/api', apiLimiter);
 
-// 4. API v1 Mounts
+// 5. API v1 Mounts
 app.use('/api/v1/movies', movieRoutes);
 app.use('/api/v1/series', seriesRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/watchlist', watchlistRoutes);
+app.use('/api/v1/bookings', bookingRoutes);
+
 
 // 5. 404 Route Handler
 app.use((req, res) => {

@@ -16,6 +16,8 @@ import {
   FaUndo,
 } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { getMovieUrl } from '../utils/slug';
+
 
 const GENRES = [
   { id: 'all', name: 'All Genres' },
@@ -295,7 +297,8 @@ const MoviesPage = () => {
                   className="bg-dark-800/80 rounded-2xl border border-white/10 p-4 flex flex-col sm:flex-row gap-5 hover:border-accent-gold/40 transition-all shadow-md group"
                 >
                   <Link
-                    to={`/movie/${movie.id}`}
+                    to={getMovieUrl(movie)}
+                    state={{ movieId: movie.id }}
                     className="w-full sm:w-28 h-40 flex-shrink-0 rounded-xl overflow-hidden bg-dark-700"
                   >
                     <img
@@ -309,7 +312,7 @@ const MoviesPage = () => {
                   <div className="flex-1 flex flex-col justify-between">
                     <div>
                       <div className="flex items-start justify-between gap-2">
-                        <Link to={`/movie/${movie.id}`}>
+                        <Link to={getMovieUrl(movie)} state={{ movieId: movie.id }}>
                           <h3 className="text-lg font-bold text-white group-hover:text-accent-gold transition-colors">
                             {movie.title || movie.original_title}
                           </h3>
@@ -342,11 +345,13 @@ const MoviesPage = () => {
                       </button>
 
                       <Link
-                        to={`/movie/${movie.id}`}
+                        to={getMovieUrl(movie)}
+                        state={{ movieId: movie.id }}
                         className="inline-flex items-center text-xs font-semibold text-gray-300 hover:text-white px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
                       >
                         Details & Tickets
                       </Link>
+
 
                       <button
                         onClick={() => toggleMyList && toggleMyList(movie)}

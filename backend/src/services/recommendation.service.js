@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { tmdbService } = require('./tmdb.service');
 const { logger } = require('../middlewares/logger');
+const { env } = require('../config/env');
 
 let recommendationsMap = null;
 

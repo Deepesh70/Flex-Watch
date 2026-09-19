@@ -1,9 +1,13 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { MovieContext } from '../context/Movies.context';
-import { FaStar, FaPlay, FaBookmark, FaCheck, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaStar, FaPlay, FaBookmark, FaCheck, FaExternalLinkAlt, FaTicketAlt } from 'react-icons/fa';
+import SeatPickerModal from '../Booking/SeatPickerModal';
+import TicketModal from '../Booking/TicketModal';
 
 const MovieInfo = ({ movie }) => {
   const { openTrailer, toggleMyList, isInMyList } = useContext(MovieContext);
+  const [showSeatPicker, setShowSeatPicker] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState(null);
 
   if (!movie) return null;
 
@@ -80,11 +84,19 @@ const MovieInfo = ({ movie }) => {
       {/* Action Buttons */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
-          onClick={() => openTrailer && openTrailer(movie)}
-          className="inline-flex items-center justify-center gap-2 bg-accent-gold hover:bg-accent-goldHover text-dark-900 font-extrabold px-6 py-3 rounded-xl transition-all shadow-lg shadow-accent-gold/20 hover:scale-105"
+          onClick={() => setShowSeatPicker(true)}
+          className="inline-flex items-center justify-center gap-2 bg-accent-gold hover:bg-accent-goldHover text-dark-900 font-extrabold px-6 py-3 rounded-xl transition-all shadow-lg shadow-accent-gold/25 hover:scale-105"
         >
-          <FaPlay className="w-3.5 h-3.5" />
-          <span>Watch Official Trailer</span>
+          <FaTicketAlt className="w-3.5 h-3.5" />
+          <span>Book Tickets</span>
+        </button>
+
+        <button
+          onClick={() => openTrailer && openTrailer(movie)}
+          className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-5 py-3 rounded-xl border border-white/10 transition-all hover:scale-105"
+        >
+          <FaPlay className="w-3.5 h-3.5 text-accent-gold" />
+          <span>Watch Trailer</span>
         </button>
 
         <button
@@ -111,6 +123,26 @@ const MovieInfo = ({ movie }) => {
           </a>
         )}
       </div>
+
+      {/* Seat Picker Modal */}
+      {showSeatPicker && (
+        <SeatPickerModal
+          movie={movie}
+          onClose={() => setShowSeatPicker(false)}
+          onBookingSuccess={(booking) => {
+            setShowSeatPicker(false);
+            setConfirmedBooking(booking);
+          }}
+        />
+      )}
+
+      {/* Ticket Receipt Modal */}
+      {confirmedBooking && (
+        <TicketModal
+          booking={confirmedBooking}
+          onClose={() => setConfirmedBooking(null)}
+        />
+      )}
     </div>
   );
 };

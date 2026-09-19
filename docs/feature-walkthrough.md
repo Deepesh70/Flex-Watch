@@ -30,14 +30,20 @@ Located at the top of the homepage (`frontend/src/components/HeroCarousal/`):
 
 ---
 
-## 4. Movie Details Experience
+## 4. Movie Details Experience & Semantic URL Slugs
 
-Opening any movie (`/movie/:id`) navigates to a rich details layout (`frontend/src/pages/Movie.page.jsx`):
+Opening any movie navigates to a rich details layout with **clean, SEO-friendly semantic URL slugs** (`/movie/:slug`, e.g. `/movie/moana-2` or `/movie/spider-man-across-the-spider-verse`):
 
+* **Semantic URLs**: All posters, hero banners, and search results render human-readable movie name URLs without exposing raw database IDs in the browser address bar.
+* **Dual-Tier Resolution**:
+  - In-app navigation uses `state: { movieId: movie.id }` for instant 0ms transitions.
+  - Direct browser visits, bookmarks, and links without state automatically resolve the title slug via backend catalog lookup.
+  - Backwards-compatible with legacy numeric IDs (`/movie/1108427`).
 * **Cinematic Banner**: High-resolution backdrop image with dark vignettes, title, release year, runtime, and average rating score.
 * **Trailer Streaming Modal**: Clicking "Watch Trailer" opens an accessible video modal (`frontend/src/components/common/MovieModal.jsx`) streaming the official YouTube trailer fetched dynamically from the backend.
 * **Cast & Crew Shelves**: Horizontal slider presenting actor profile avatars, character names, and crew credits.
 * **Similar Titles**: Algorithmically matched similar movies fetched from `/api/v1/movies/:id/similar`.
+
 
 ---
 
@@ -84,3 +90,29 @@ Accessible via `/series` (`frontend/src/pages/Series.page.jsx`):
 
 * **Shimmering Skeleton Screens**: Pre-renders layout placeholders (`frontend/src/components/common/LoadingSkeleton.jsx`) during network fetching, eliminating layout shifts.
 * **React Error Boundaries**: Catches uncaught runtime render errors in `<ErrorBoundary>`, displaying an intuitive retry screen instead of a white crash page.
+
+---
+
+## 10. Interactive Cinema Seat Booking System (BookMyShow Experience)
+
+Flex-Watch features a flagship **BookMyShow-style cinema reservation engine** directly integrated into movie details:
+
+* **Entry Point**: A prominent **"Book Tickets"** CTA on every movie page opens the modal experience.
+* **Interactive Seating Map (`SeatPickerModal.jsx`)**:
+  * **Curved Cinema Screen**: High-fidelity neon-glow curved screen SVG with projection beam styling and "SCREEN THIS WAY".
+  * **Showtime & Date Carousel**: Select between multiple date tabs (Today, Tomorrow, Weekend) and showtimes (01:30 PM, 04:45 PM, 07:30 PM IMAX Laser, 10:15 PM).
+  * **Multi-Tier Seating Grid**:
+    * **VIP Recliners** (Rows A-B, $15.00/seat, gold accent)
+    * **Premium Club** (Rows C-E, $12.00/seat, blue accent)
+    * **Standard Cinema** (Rows F-G, $10.00/seat, slate accent)
+  * **Live Occupancy Sync**: Queries `/api/v1/bookings/occupied` in real-time to disable already-booked seats.
+  * **Dynamic Price Calculation**: Real-time tally of selected seats and subtotal.
+* **Idempotent & Race-Condition Safe Backend**:
+  * Employs UUID v4 `idempotencyKey` preventing duplicate charges or bookings upon network retransmits.
+  * Checks for seat collisions atomically, returning `HTTP 409 Conflict` if another patron reserved any of the selected seats first.
+* **Digital Cinema Pass (`TicketModal.jsx`)**:
+  * Perforated cinema pass layout with tear notches, simulated scannable QR / barcodes, movie thumbnail, reference ID (`FLX-XXXXXX`), and seat allocation.
+  * Features native **"Print / Save Ticket"** support via window print styling.
+* **Profile Integration**:
+  * The **Profile Page** (`/profile`) features a dedicated **"My Cinema Bookings"** tab with count badge, card summaries, digital ticket viewer, and cancellation controls (`DELETE /api/v1/bookings/:id`).
+

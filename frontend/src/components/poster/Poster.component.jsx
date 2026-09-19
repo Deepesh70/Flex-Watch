@@ -2,6 +2,8 @@ import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaStar, FaPlus, FaCheck, FaPlay } from 'react-icons/fa';
 import { MovieContext } from '../context/Movies.context';
+import { getMovieUrl } from '../../utils/slug';
+
 
 const FALLBACK_POSTER =
   'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=500&q=80';
@@ -30,7 +32,7 @@ const Poster = (props) => {
   return (
     <div className="movie-card flex flex-col items-start gap-2 px-1.5 py-2 group w-full max-w-[220px]">
       <div className="relative w-full aspect-[2/3] overflow-hidden rounded-xl bg-dark-700 border border-white/5 shadow-lg group-hover:border-accent-gold/40 transition-all duration-300">
-        <Link to={`/movie/${props.id}`} className="block w-full h-full">
+        <Link to={getMovieUrl(props)} state={{ movieId: props.id }} className="block w-full h-full">
           <img
             key={props.id ? `poster-${props.id}` : posterUrl}
             src={hasError ? FALLBACK_POSTER : posterUrl}
@@ -76,8 +78,9 @@ const Poster = (props) => {
       </div>
 
       {/* Title & Info */}
-      <Link to={`/movie/${props.id}`} className="w-full">
+      <Link to={getMovieUrl(props)} state={{ movieId: props.id }} className="w-full">
         <h3 className="text-sm font-semibold text-gray-200 group-hover:text-accent-gold transition-colors duration-200 line-clamp-1 w-full text-left">
+
           {props.title || props.original_title || 'Untitled Movie'}
         </h3>
         {year && (

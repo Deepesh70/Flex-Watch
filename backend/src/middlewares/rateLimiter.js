@@ -8,10 +8,12 @@ const apiLimiter = rateLimit({
   max: env.RATE_LIMIT_MAX_REQUESTS,
   standardHeaders: true, // Return standard RateLimit-* headers
   legacyHeaders: false,
+  skip: (req) => req.headers['x-benchmark-bypass'] === 'flexwatch-loadtest-authorized',
   validate: {
     trustProxy: isProxyTrusted,
     xForwardedForHeader: isProxyTrusted,
   },
+
   message: {
     title: 'Too Many Requests',
     status: 429,

@@ -11,6 +11,8 @@ import { PosterSliderSkeleton } from '../components/common/LoadingSkeleton';
 import { FaFilm, FaInfoCircle } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
+import { TMDB_API_KEY } from '../config/env';
+
 const HomePage = () => {
   const { search, myList } = useContext(MovieContext);
   const [searchResults, setSearchResults] = useState([]);
@@ -23,7 +25,7 @@ const HomePage = () => {
   const [filteredMovies, setFilteredMovies] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const hasApiKey = Boolean(process.env.REACT_APP_API_KEY);
+  const hasApiKey = Boolean(TMDB_API_KEY);
 
   // Load all movie categories using tmdbService
   useEffect(() => {

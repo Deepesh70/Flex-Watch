@@ -12,7 +12,7 @@ import MovieProvider from './components/context/Movies.context';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { ClerkProvider } from '@clerk/clerk-react';
 
-const CLERK_PUBLISHABLE_KEY = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+import { CLERK_PUBLISHABLE_KEY } from './config/env';
 
 function AppContent() {
   return (
@@ -35,29 +35,18 @@ function AppContent() {
 }
 
 function App() {
-  if (!CLERK_PUBLISHABLE_KEY || !CLERK_PUBLISHABLE_KEY.startsWith('pk_')) {
-    console.error('Missing or invalid REACT_APP_CLERK_PUBLISHABLE_KEY.');
+  const isClerkConfigured = Boolean(CLERK_PUBLISHABLE_KEY && CLERK_PUBLISHABLE_KEY.startsWith('pk_'));
+
+  if (isClerkConfigured) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-6 text-center">
-        <div className="max-w-md bg-dark-800 border border-red-500/40 rounded-2xl p-6 shadow-2xl">
-          <h2 className="text-xl font-bold text-red-400 mb-2">Configuration Error</h2>
-          <p className="text-sm text-gray-300">
-            Missing required Clerk publishable key. Please define{' '}
-            <code className="bg-black/50 text-accent-gold px-1.5 py-0.5 rounded font-mono text-xs">
-              REACT_APP_CLERK_PUBLISHABLE_KEY
-            </code>{' '}
-            in your environment configuration.
-          </p>
-        </div>
-      </div>
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+        <AppContent />
+      </ClerkProvider>
     );
   }
 
-  return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-      <AppContent />
-    </ClerkProvider>
-  );
+  // Graceful Demo / Showcase Mode
+  return <AppContent />;
 }
 
 export default App;

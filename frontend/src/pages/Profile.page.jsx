@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import DefaultlayoutHOC from '../layouts/Default.layout';
 import { MovieContext } from '../components/context/Movies.context';
 import Poster from '../components/poster/Poster.component';
@@ -18,17 +18,56 @@ import {
   FaSignOutAlt,
   FaCheckCircle,
   FaInfoCircle,
+  FaTicketAlt,
+  FaCalendarAlt,
+  FaClock,
+  FaChair,
 } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
-const CLERK_KEY = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+import { CLERK_PUBLISHABLE_KEY as CLERK_KEY } from '../config/env';
+import bookingService from '../services/booking.service';
+import TicketModal from '../components/Booking/TicketModal';
 
 // Internal Profile Content View
 const ProfileContent = ({ user, isClerk = false, onSignOut }) => {
   const { myList } = useContext(MovieContext);
-  const [activeTab, setActiveTab] = useState('watchlist'); // 'watchlist' | 'settings'
+  const [activeTab, setActiveTab] = useState('watchlist'); // 'watchlist' | 'bookings' | 'settings'
+  const [bookings, setBookings] = useState([]);
+  const [selectedTicket, setSelectedTicket] = useState(null);
   const [qualitySetting, setQualitySetting] = useState('4k');
   const [notifications, setNotifications] = useState(true);
+
+  // Load user bookings
+  useEffect(() => {
+    let isMounted = true;
+    const loadBookings = async () => {
+      try {
+        const userBookings = await bookingService.getUserBookings();
+        if (isMounted) {
+          setBookings(userBookings || []);
+        }
+      } catch (err) {
+        console.warn('Could not load bookings:', err);
+      }
+    };
+    loadBookings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this reservation?')) return;
+    try {
+      await bookingService.cancelBooking(bookingId);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'CANCELLED' } : b))
+      );
+    } catch (err) {
+      alert('Could not cancel booking: ' + (err.response?.data?.detail || err.message));
+    }
+  };
 
   const userName =
     user?.fullName ||
@@ -95,10 +134,14 @@ const ProfileContent = ({ user, isClerk = false, onSignOut }) => {
         </div>
 
         {/* Quick Stats Banner */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t border-white/5 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/5 text-center">
           <div className="bg-dark-700/50 p-3 rounded-2xl border border-white/5">
             <span className="text-xs text-gray-400">Saved in Watchlist</span>
             <p className="text-xl font-bold text-accent-gold mt-0.5">{myList?.length || 0}</p>
+          </div>
+          <div className="bg-dark-700/50 p-3 rounded-2xl border border-white/5">
+            <span className="text-xs text-gray-400">Cinema Bookings</span>
+            <p className="text-xl font-bold text-white mt-0.5">{bookings?.length || 0}</p>
           </div>
           <div className="bg-dark-700/50 p-3 rounded-2xl border border-white/5">
             <span className="text-xs text-gray-400">Streaming Quality</span>
@@ -123,6 +166,18 @@ const ProfileContent = ({ user, isClerk = false, onSignOut }) => {
         >
           <FaBookmark className="w-3.5 h-3.5" />
           <span>My Watchlist ({myList?.length || 0})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('bookings')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+            activeTab === 'bookings'
+              ? 'bg-accent-gold text-dark-900 shadow-md shadow-accent-gold/20'
+              : 'text-gray-400 hover:text-white bg-dark-800'
+          }`}
+        >
+          <FaTicketAlt className="w-3.5 h-3.5" />
+          <span>My Cinema Bookings ({bookings?.length || 0})</span>
         </button>
 
         <button
@@ -163,6 +218,127 @@ const ProfileContent = ({ user, isClerk = false, onSignOut }) => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Tab 2: Bookings */}
+      {activeTab === 'bookings' && (
+        <div className="animate-fade-in space-y-4">
+          {bookings && bookings.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              {bookings.map((booking) => {
+                const isConfirmed = booking.status === 'CONFIRMED';
+                const showDate = new Date(booking.showtime);
+                const seats = Array.isArray(booking.seats)
+                  ? booking.seats
+                  : (booking.seats || '').split(',').map((s) => s.trim());
+
+                return (
+                  <div
+                    key={booking.id}
+                    className="bg-dark-800/90 border border-white/10 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <span className="text-[10px] uppercase font-mono text-gray-400">
+                            {booking.id ? `FLX-${booking.id.slice(-6).toUpperCase()}` : 'FLX-TICKET'}
+                          </span>
+                          <h4 className="text-lg font-black text-white">{booking.movieTitle}</h4>
+                          <p className="text-xs text-gray-400">FlexWatch Cinema • Screen 4 (IMAX)</p>
+                        </div>
+                        <span
+                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                            isConfirmed
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                              : 'bg-red-500/20 text-red-400 border border-red-500/40'
+                          }`}
+                        >
+                          {booking.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-xs py-3 border-y border-white/5 my-3">
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <FaCalendarAlt className="text-accent-gold" />
+                          <span>
+                            {showDate.toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <FaClock className="text-accent-gold" />
+                          <span>
+                            {showDate.toLocaleTimeString(undefined, {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                        <div className="col-span-2 flex items-center gap-2 text-gray-300">
+                          <FaChair className="text-accent-gold" />
+                          <span className="font-semibold text-white">
+                            Seats ({seats.length}): {seats.join(', ')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <div>
+                        <span className="text-[10px] text-gray-400 uppercase">Paid</span>
+                        <p className="text-lg font-black text-accent-gold">
+                          ${Number(booking.totalAmount || 0).toFixed(2)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isConfirmed && (
+                          <button
+                            onClick={() => handleCancelBooking(booking.id)}
+                            className="text-xs text-gray-400 hover:text-accent-red px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setSelectedTicket(booking)}
+                          className="bg-accent-gold hover:bg-accent-goldHover text-dark-900 font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-accent-gold/20"
+                        >
+                          View Ticket
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-dark-800/40 rounded-3xl border border-white/5 p-8">
+              <FaTicketAlt className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-white mb-1">No Cinema Bookings Yet</h3>
+              <p className="text-gray-400 text-xs sm:text-sm max-w-md mx-auto mb-6">
+                Pick any movie in the catalog, click "Book Tickets", and reserve your seats with live IMAX seating!
+              </p>
+              <Link
+                to="/movies"
+                className="inline-flex items-center gap-2 bg-accent-gold hover:bg-accent-goldHover text-dark-900 font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-md"
+              >
+                Browse & Book Movies
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ticket Modal Viewer */}
+      {selectedTicket && (
+        <TicketModal
+          booking={selectedTicket}
+          onClose={() => setSelectedTicket(null)}
+        />
       )}
 
       {/* Tab 2: Settings */}

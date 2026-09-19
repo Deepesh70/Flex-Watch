@@ -13,8 +13,12 @@ server/node_modules/
 backend/.env
 backend/.env.local
 backend/.env.*
+frontend/.env
+frontend/.env.local
+frontend/.env.*
 !.env.example
 !backend/.env.example
+!frontend/.env.example
 
 # Local SQLite & Databases
 *.db
