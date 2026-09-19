@@ -16,10 +16,12 @@ const envSchema = z.object({
   CLERK_JWT_KEY: z.string().optional().default(process.env.CLERK_JWT_KEY || ''),
   TRUST_PROXY: z.string().optional().default(process.env.TRUST_PROXY || ''),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  REDIS_URL: z.string().optional().default(process.env.REDIS_URL || ''),
   CACHE_TTL_DEFAULT_SEC: z.coerce.number().default(3600), // 1 hour
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000), // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(500),
 });
+
 
 const parsed = envSchema.safeParse(process.env);
 

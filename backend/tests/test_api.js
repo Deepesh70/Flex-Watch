@@ -181,17 +181,43 @@ async function testAll() {
     });
     console.log(`✔ Booking cancelled: ${cancelRes.data.bookingId} (status: ${cancelRes.data.status})`);
 
-    // 11. CacheService LRU eviction test
+    // 11. Two-Tier CacheService LRU eviction test
     const { CacheService } = require('../src/services/cache.service');
     const testCache = new CacheService(2);
-    testCache.set('k1', 'v1');
-    testCache.set('k2', 'v2');
-    testCache.get('k1'); // k1 becomes MRU, k2 is LRU
-    testCache.set('k3', 'v3'); // should evict k2
-    if (testCache.get('k2') !== null || testCache.get('k1') !== 'v1' || testCache.get('k3') !== 'v3') {
+    await testCache.set('k1', 'v1');
+    await testCache.set('k2', 'v2');
+    await testCache.get('k1'); // k1 becomes MRU, k2 is LRU
+    await testCache.set('k3', 'v3'); // should evict k2
+    const valK2 = await testCache.get('k2');
+    const valK1 = await testCache.get('k1');
+    const valK3 = await testCache.get('k3');
+    if (valK2 !== null || valK1 !== 'v1' || valK3 !== 'v3') {
       throw new Error('CacheService LRU eviction failed');
     }
-    console.log('✔ CacheService LRU eviction correctly maintained entry limit and recency');
+    const stats = testCache.getStats();
+    if (!stats.tier || typeof stats.totalHits !== 'number') {
+      throw new Error('CacheService stats schema invalid');
+    }
+    await testCache.close();
+    console.log(`✔ CacheService LRU eviction and stats verified (${stats.tier}, hits: ${stats.totalHits})`);
+
+    // 12. Prometheus Metrics Probe (/metrics)
+    const metricsRes = await axios.get(`${base}/metrics`);
+    if (metricsRes.status !== 200 || !metricsRes.data.includes('flexwatch_http_requests_total')) {
+      throw new Error('Prometheus /metrics endpoint invalid');
+    }
+    console.log('✔ Prometheus /metrics endpoint active and exporting runtime metrics');
+
+    // 13. OpenAPI / Swagger Documentation Probes (/api/docs & /api/docs.json)
+    const docsJsonRes = await axios.get(`${base}/api/docs.json`);
+    if (docsJsonRes.status !== 200 || docsJsonRes.data.openapi !== '3.0.0') {
+      throw new Error('OpenAPI /api/docs.json specification invalid');
+    }
+    const docsUiRes = await axios.get(`${base}/api/docs/`);
+    if (docsUiRes.status !== 200 || !docsUiRes.data.includes('swagger-ui')) {
+      throw new Error('Swagger UI /api/docs HTML not returned');
+    }
+    console.log('✔ OpenAPI 3.0 specification (/api/docs.json) and Swagger UI (/api/docs) verified');
 
     console.log('--- All Backend Smoke Tests Passed! ---');
   } finally {
@@ -199,6 +225,7 @@ async function testAll() {
       serverInstance.close();
     }
   }
+
 }
 
 testAll().catch((e) => {

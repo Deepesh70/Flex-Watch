@@ -8,11 +8,13 @@
   <img src="https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
   <img src="https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" />
+  <img src="https://img.shields.io/badge/Swagger-OpenAPI_3.0-85EA2D?style=for-the-badge&logo=swagger&logoColor=black" />
+  <img src="https://img.shields.io/badge/Prometheus-Metrics-E6522C?style=for-the-badge&logo=prometheus&logoColor=white" />
 </p>
 
 # 🎬 Flex-Watch — Enterprise Movie Discovery & Streaming Platform
 
-A production-grade, distributed movie discovery and streaming web platform inspired by BookMyShow and Netflix. Features a high-performance **React 19** frontend powered by **Vite 6** and **Vitest**, an **Express BFF (Backend-For-Frontend)** with **Prisma ORM** persistence, multi-tier caching with **singleflight request deduplication**, on-demand **Python ML recommendations**, and full **Docker Compose** containerization.
+A production-grade, distributed movie discovery and streaming web platform inspired by BookMyShow and Netflix. Features a high-performance **React 19** frontend powered by **Vite 6** and **Vitest**, an **Express BFF (Backend-For-Frontend)** with **Prisma ORM** persistence, two-tier caching (**L1 In-Memory + L2 Redis**) with **singleflight request deduplication**, interactive **OpenAPI 3.0 / Swagger docs**, **Prometheus metrics**, on-demand **Python ML recommendations**, and full **Docker Compose** containerization.
 
 ---
 
@@ -31,10 +33,11 @@ A production-grade, distributed movie discovery and streaming web platform inspi
                  ┌────────────────────────┼────────────────────────┐
                  ▼                        ▼                        ▼
         [Security & Resilience]    [Persistence Layer]       [Catalog & ML Engine]
-        - Helmet, CORS Protection  - Prisma ORM              - In-Memory LRU Cache
-        - Rate Limiting            - SQLite (Local Dev)      - Singleflight Collapsing
-        - Structured Pino Logs     - PostgreSQL (Production) - Protected TMDB Secrets
+        - Helmet, CORS Protection  - Prisma ORM              - L1 In-Memory LRU Cache
+        - Rate Limiting            - SQLite (Local Dev)      - L2 Distributed Redis
+        - Structured Pino Logs     - PostgreSQL (Production) - Singleflight Collapsing
         - Trace IDs (x-request-id) - Watchlist & Bookings    - On-demand ML Serving
+        - Prometheus /metrics      - Idempotency & Conflict  - Protected TMDB Secrets
 ```
 
 ---
@@ -44,7 +47,9 @@ A production-grade, distributed movie discovery and streaming web platform inspi
 | Feature | Description |
 |---|---|
 | 🛡️ **Zero Secret Exposure** | TMDB API keys and Clerk credentials live strictly on the backend service. |
-| ⚡ **Resilient Caching** | In-memory cache + singleflight promise collapsing eliminates upstream TMDB rate limit spikes and cache stampedes. |
+| ⚡ **Two-Tier Resilient Caching** | Local L1 LRU memory + distributed L2 Redis with singleflight promise collapsing eliminates upstream TMDB rate limit spikes and stampedes. |
+| 📖 **Interactive Swagger UI** | Complete OpenAPI 3.0 interactive documentation and live sandbox available at `/api/docs`. |
+| 📊 **Prometheus Metrics** | Production-ready `/metrics` endpoint tracking HTTP latency histograms, status code counts, and cache hit ratios. |
 | 🎟️ **Cinema Seat Booking** | BookMyShow-style curved screen seat selector with tiered pricing (VIP/Club/Standard), conflict guards (409), idempotent bookings, and digital printable ticket passes. |
 | 🔄 **Database Persistence** | Watchlists ("My List") and booking drafts are persisted via Prisma ORM (SQLite for zero-config dev, PostgreSQL for cloud production). |
 | 🤖 **On-Demand ML Recommendations** | ML cosine-similarity matches (~4,800 titles) are served dynamically via API rather than bloated into the client bundle. |
@@ -52,6 +57,8 @@ A production-grade, distributed movie discovery and streaming web platform inspi
 | 🔍 **Real-Time Catalog & Search** | Live search and multi-genre filtering across trending, popular, upcoming, and top-rated movies & TV series. |
 | 🐳 **Full Containerization** | Multi-stage Dockerfiles and `docker-compose.yml` orchestrating PostgreSQL, Redis, Backend API, and Nginx. |
 | 🚦 **Automated CI Pipeline** | GitHub Actions validating backend migrations, linting, and 100% frontend test suites on PR/push. |
+| 🚀 **High-Throughput Benchmark** | Automated `autocannon` concurrency test verifying 1,200+ req/sec throughput and singleflight collapsing. |
+
 
 
 ---
@@ -134,7 +141,10 @@ Flex-Watch/
    npm run dev
    ```
    - **Frontend**: [http://localhost:3000](http://localhost:3000)
+
    - **Backend API**: [http://localhost:5000](http://localhost:5000)
+   - **Interactive API Docs (Swagger UI)**: [http://localhost:5000/api/docs](http://localhost:5000/api/docs)
+   - **Prometheus Metrics**: [http://localhost:5000/metrics](http://localhost:5000/metrics)
 
 *Or run individual services:*
 - `npm run dev:frontend` (React client only)
@@ -152,13 +162,19 @@ docker compose up --build -d
 ```
 
 - **Frontend Web Application**: [http://localhost](http://localhost)
+- **Interactive API Docs**: [http://localhost/api/docs](http://localhost/api/docs)
 - **Backend API Probes**: [http://localhost/health/ready](http://localhost/health/ready)
 - **PostgreSQL Database**: Port `5432`
 - **Redis Cache**: Port `6379`
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Benchmarks
+
+Run full monorepo test suite:
+```bash
+npm test
+```
 
 Run backend API smoke tests:
 ```bash
@@ -170,12 +186,19 @@ Run frontend unit & integration tests:
 npm run test:frontend
 ```
 
+Run high-concurrency performance benchmark:
+```bash
+npm run benchmark
+```
+
 ---
 
 ## 📡 Core API Endpoints
 
 | Method | Endpoint | Description | Cache Policy |
 |---|---|---|---|
+| `GET` | `/api/docs` | Interactive OpenAPI 3.0 Swagger UI | Real-time |
+| `GET` | `/metrics` | Prometheus observability metrics | Real-time |
 | `GET` | `/health/live` | Liveness check probe | None |
 | `GET` | `/health/ready` | Deep check (DB, Cache, TMDB) | Real-time |
 | `GET` | `/api/v1/movies/trending` | Weekly/daily trending movies | 30 mins |
@@ -183,9 +206,14 @@ npm run test:frontend
 | `GET` | `/api/v1/movies/top-rated` | Top-rated movies catalog | 2 hours |
 | `GET` | `/api/v1/movies/:id` | Full movie details | 24 hours |
 | `GET` | `/api/v1/movies/:id/recommendations` | Dynamic ML recommendations | On-demand |
+| `GET` | `/api/v1/bookings/occupied` | Reserved seats for showtime | Real-time |
+| `GET` | `/api/v1/bookings` | Retrieve user bookings | Authenticated/Guest |
+| `POST` | `/api/v1/bookings` | Idempotent seat reservation (conflict safe) | Atomic (409 guard) |
+| `DELETE` | `/api/v1/bookings/:id` | Cancel cinema booking | Authenticated/Guest |
 | `GET` | `/api/v1/watchlist` | Retrieve user watchlist | Authenticated/Guest |
 | `POST` | `/api/v1/watchlist` | Add movie to persistent watchlist | Authenticated/Guest |
 | `DELETE` | `/api/v1/watchlist/:tmdbId` | Remove item from watchlist | Authenticated/Guest |
+
 
 ---
 

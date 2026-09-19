@@ -16,7 +16,9 @@
     "test": "npm run test --workspace=backend && npm run test --workspace=frontend",
     "test:frontend": "npm run test --workspace=frontend",
     "test:backend": "npm run test --workspace=backend",
+    "benchmark": "npm run benchmark --workspace=backend",
     "db:push": "npm run db:push --workspace=backend",
+
     "db:generate": "npm run db:generate --workspace=backend",
     "db:studio": "npm run db:studio --workspace=backend"
   },

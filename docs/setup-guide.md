@@ -83,10 +83,19 @@ npm run dev
 
 * **Frontend Web Application**: [http://localhost:3000](http://localhost:3000)
 * **Backend API Server**: [http://localhost:5000](http://localhost:5000)
+* **Interactive API Documentation (Swagger UI)**: [http://localhost:5000/api/docs](http://localhost:5000/api/docs)
+* **Prometheus Observability Metrics**: [http://localhost:5000/metrics](http://localhost:5000/metrics)
 * **Backend Health Check**: [http://localhost:5000/health/ready](http://localhost:5000/health/ready)
 
-### Step 4: (Optional) Run Services Individually
+### Step 4: Run Concurrency Load Testing & Singleflight Benchmark
+```bash
+npm run benchmark
+```
+Fires 50 concurrent connections over 5 seconds via `autocannon` to demonstrate singleflight cache collapsing and sub-millisecond retrieval.
+
+### Step 5: (Optional) Run Services Individually
 If you want to run services in separate terminal windows:
+
 ```bash
 # Terminal 1: Backend only
 npm run dev:backend
