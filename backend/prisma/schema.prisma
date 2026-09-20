@@ -56,12 +56,3 @@ model Booking {
   @@index([userId])
   @@index([movieId])
 }
-
-model CacheEntry {
-  key       String   @id
-  value     String   // Serialized JSON payload
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([expiresAt])
-}

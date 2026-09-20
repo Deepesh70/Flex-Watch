@@ -88,4 +88,25 @@ async function optionalAuth(req, res, next) {
   return next();
 }
 
-module.exports = { requireAuth, optionalAuth };
+/**
+ * Resolves active user: returns Clerk-authenticated user if token was valid,
+ * or upserts a guest user record based on the x-guest-id header.
+ */
+async function getEffectiveUser(req) {
+  if (req.user) return req.user;
+
+  const guestId = req.headers['x-guest-id'];
+  if (!guestId) {
+    const error = new Error('Authentication or guest identifier (x-guest-id header) is required.');
+    error.status = 401;
+    throw error;
+  }
+
+  return await prisma.user.upsert({
+    where: { clerkId: guestId },
+    update: {},
+    create: { clerkId: guestId, name: 'Guest User' },
+  });
+}
+
+module.exports = { requireAuth, optionalAuth, getEffectiveUser };

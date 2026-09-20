@@ -10,9 +10,7 @@ let recommendationsMap = null;
 function loadRecommendations() {
   if (recommendationsMap) return recommendationsMap;
 
-  const primaryPath = path.resolve(__dirname, '../../data/recommendations.json');
-  const fallbackPath = path.resolve(__dirname, '../../../Recommendation_system/recommendations.json');
-  const jsonPath = fs.existsSync(primaryPath) ? primaryPath : fallbackPath;
+  const jsonPath = path.resolve(__dirname, '../../data/recommendations.json');
   try {
     if (fs.existsSync(jsonPath)) {
       const raw = fs.readFileSync(jsonPath, 'utf8');

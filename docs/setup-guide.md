@@ -108,10 +108,9 @@ npm run dev:frontend
 
 ## 4. Method 2: Docker Compose (Full Production Topology)
 
-This mode launches the complete enterprise topology:
-- **PostgreSQL 16** container with volume persistence
-- **Redis 7** in-memory cache container
-- **Express API** container (running under non-root user `flexwatch`)
+This mode launches the complete containerized stack:
+- **Redis 7** in-memory L2 cache container with volume persistence
+- **Express API** container (running under non-root user `flexwatch` with persistent SQLite volume)
 - **Nginx Web Server** container hosting the React production bundle with gzip compression and reverse proxying `/api/` requests to the backend.
 
 ### Launch Stack
@@ -131,7 +130,6 @@ docker compose logs -f
 
 * **Web Application**: [http://localhost](http://localhost) (Port 80)
 * **API Health Check**: [http://localhost/health/ready](http://localhost/health/ready)
-* **PostgreSQL Port**: `5432`
 * **Redis Port**: `6379`
 
 ### Stop Stack

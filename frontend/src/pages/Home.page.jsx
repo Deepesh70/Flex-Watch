@@ -149,7 +149,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Carousel */}
-      <HeroCarousal />
+      <HeroCarousal initialMovies={nowPlayingMovies} />
 
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">

@@ -1,7 +1,7 @@
 const express = require('express');
 const { z } = require('zod');
 const { prisma } = require('../db/prisma');
-const { optionalAuth } = require('../middlewares/auth');
+const { optionalAuth, getEffectiveUser } = require('../middlewares/auth');
 const { logger } = require('../middlewares/logger');
 
 const router = express.Router();
@@ -16,24 +16,6 @@ const createBookingSchema = z.object({
   seats: z.array(z.string().min(2)).min(1),
   totalAmount: z.coerce.number().positive(),
 });
-
-// Helper to determine active userId (Clerk authenticated user or Guest UUID)
-async function getEffectiveUser(req) {
-  if (req.user) return req.user;
-
-  const guestId = req.headers['x-guest-id'];
-  if (!guestId) {
-    const error = new Error('Authentication or guest identifier (x-guest-id header) is required.');
-    error.status = 401;
-    throw error;
-  }
-
-  return await prisma.user.upsert({
-    where: { clerkId: guestId },
-    update: {},
-    create: { clerkId: guestId, name: 'Guest User' },
-  });
-}
 
 /**
  * 1. GET /api/v1/bookings/occupied
