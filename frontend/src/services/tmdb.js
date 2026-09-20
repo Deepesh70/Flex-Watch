@@ -147,32 +147,6 @@ export const tmdbService = {
   getTrendingTV: async () => {
     return fetchWithFallback('/series/trending', '/trending/tv/week');
   },
-
-  getTVDetails: async (id) => {
-    if (!id) return null;
-    return fetchWithFallback(`/series/${id}`, `/tv/${id}`, (data) => data || null);
-  },
-
-  getTVCredits: async (id) => {
-    if (!id) return { cast: [], crew: [] };
-    return fetchWithFallback(`/series/${id}/credits`, `/tv/${id}/credits`, (data) => data || { cast: [], crew: [] });
-  },
-
-  getTVVideos: async (id) => {
-    if (!id) return [];
-    return fetchWithFallback(`/series/${id}/videos`, `/tv/${id}/videos`);
-  },
-
-  searchTV: async (query) => {
-    if (!query || !query.trim()) return [];
-    const clean = query.trim();
-    return fetchWithFallback(
-      `/search/tv?q=${encodeURIComponent(clean)}`,
-      '/search/tv',
-      (data) => data?.results || [],
-      { query: clean }
-    );
-  },
 };
 
 // --- Watchlist Service (Persisted to Database) ---

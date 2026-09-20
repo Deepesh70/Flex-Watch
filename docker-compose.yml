@@ -1,22 +1,5 @@
 services:
-  # 1. PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: flexwatch-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-flexwatch_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-flexwatch_db}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-flexwatch_user} -d $${POSTGRES_DB:-flexwatch_db}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # 2. Redis Cache
+  # 1. Redis Distributed L2 Cache
   redis:
     image: redis:7-alpine
     container_name: flexwatch-redis
@@ -31,7 +14,7 @@ services:
       timeout: 3s
       retries: 5
 
-  # 3. Backend API Server
+  # 2. Backend API Server (BFF)
   api:
     build:
       context: ./backend
@@ -39,23 +22,23 @@ services:
     container_name: flexwatch-api
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 5000
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-flexwatch_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-flexwatch_db}?schema=public"
+      DATABASE_URL: "file:./dev.db"
       REDIS_URL: "redis://redis:6379"
       TMDB_API_KEY: ${TMDB_API_KEY:?Set TMDB_API_KEY}
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
       TRUST_PROXY: "1"
       CORS_ORIGIN: "http://localhost"
+    volumes:
+      - dbdata:/app/prisma
     ports:
       - "5000:5000"
 
-  # 4. Frontend Web (Nginx Reverse Proxy)
+  # 3. Frontend Web (Nginx Reverse Proxy & Static Host)
   web:
     build:
       context: ./frontend
@@ -68,5 +51,5 @@ services:
       - "80:80"
 
 volumes:
-  pgdata:
+  dbdata:
   redisdata:

@@ -1,5 +1,4 @@
 import React from 'react';
-import './App.css';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -24,8 +23,6 @@ function AppContent() {
           <Route path="/series" element={<SeriesPage />} />
           <Route path="/movie/:id" element={<MoviePage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          {/* Legacy redirect */}
-          <Route path="/plays" element={<Navigate to="/series" replace />} />
           {/* Catch-all redirect to Home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

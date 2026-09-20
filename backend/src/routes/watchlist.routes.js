@@ -1,7 +1,7 @@
 const express = require('express');
 const { z } = require('zod');
 const { prisma } = require('../db/prisma');
-const { optionalAuth } = require('../middlewares/auth');
+const { optionalAuth, getEffectiveUser } = require('../middlewares/auth');
 
 const router = express.Router();
 
@@ -15,25 +15,6 @@ const watchlistItemSchema = z.object({
   voteAverage: z.coerce.number().optional().default(0),
   releaseDate: z.string().nullable().optional(),
 });
-
-// Helper to determine active userId (Clerk authenticated user or Guest UUID)
-async function getEffectiveUser(req) {
-  if (req.user) return req.user;
-
-  // For unauthenticated/guest users, require explicit x-guest-id header
-  const guestId = req.headers['x-guest-id'];
-  if (!guestId) {
-    const error = new Error('Authentication or guest identifier (x-guest-id header) is required.');
-    error.status = 401;
-    throw error;
-  }
-
-  return await prisma.user.upsert({
-    where: { clerkId: guestId },
-    update: {},
-    create: { clerkId: guestId, name: 'Guest User' },
-  });
-}
 
 // 1. GET Watchlist
 router.get('/', optionalAuth, async (req, res, next) => {

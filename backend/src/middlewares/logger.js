@@ -1,6 +1,5 @@
 const pino = require('pino');
 const pinoHttp = require('pino-http');
-const { crypto } = require('crypto');
 const { env } = require('../config/env');
 
 const logger = pino({

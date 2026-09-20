@@ -42,9 +42,9 @@ const isLowResourceEnvironment = () => {
   return false;
 };
 
-const HeroCarousal = () => {
-  const [movies, setMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
+const HeroCarousal = ({ initialMovies }) => {
+  const [movies, setMovies] = useState(initialMovies || []);
+  const [loading, setLoading] = useState(!initialMovies || initialMovies.length === 0);
   const [activeSlide, setActiveSlide] = useState(0);
   const [videoKeys, setVideoKeys] = useState({}); // { [movieId]: videoKey }
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -56,8 +56,14 @@ const HeroCarousal = () => {
   const sliderRef = useRef(null);
   const { openTrailer, toggleMyList, isInMyList } = useContext(MovieContext);
 
-  // Fetch Hero Carousel Movies from TMDB
+  // Synchronize or fetch Hero Carousel Movies
   useEffect(() => {
+    if (initialMovies && initialMovies.length > 0) {
+      setMovies(initialMovies);
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
     const fetchMovies = async () => {
       try {
@@ -75,7 +81,7 @@ const HeroCarousal = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [initialMovies]);
 
   // Fetch Trailer Video for active slide if device/network allows
   useEffect(() => {
