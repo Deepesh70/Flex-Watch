@@ -203,11 +203,12 @@ sequenceDiagram
 
 ## 7. Security Architecture
 
-1. **Security Headers**: Managed by `helmet` with secure cross-origin resource sharing policies.
+1. **Security Headers**: Managed by `helmet` with custom Content Security Policy (CSP) directives protecting against XSS/injection while allowing Swagger UI documentation assets, paired with strict cross-origin policies.
 2. **CORS Restrictions**: Whitelists configured frontend origins (`http://localhost:3000`, `http://localhost`).
-3. **Rate Limiting**: `express-rate-limit` enforces a maximum threshold of 500 requests per 15-minute window per IP, returning standard RFC `RateLimit-*` response headers.
-4. **Proxy Trust**: `app.set('trust proxy', 1)` enables accurate client IP identification through Nginx or dev server proxies.
-5. **Session Verification**: In `backend/src/middlewares/auth.js`, Clerk authentication tokens are validated cryptographically against Clerk servers, auto-upserting users in the database.
+3. **Cryptographically Secure PRNG**: Guest session identifiers (`getGuestId`), seat booking idempotency keys, and network backoff jitters utilize cryptographically secure randomness (`crypto.getRandomValues`, `crypto.randomUUID`, and `crypto.randomInt`) rather than predictable `Math.random()`.
+4. **Rate Limiting**: `express-rate-limit` enforces a maximum threshold of 500 requests per 15-minute window per IP, returning standard RFC `RateLimit-*` response headers.
+5. **Proxy Trust**: `app.set('trust proxy', 1)` enables accurate client IP identification through Nginx or dev server proxies.
+6. **Session Verification**: In `backend/src/middlewares/auth.js`, Clerk authentication tokens are validated cryptographically against Clerk servers, auto-upserting users in the database.
 
 ---
 

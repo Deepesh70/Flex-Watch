@@ -97,7 +97,10 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
     setSubmitting(true);
     setErrorMessage('');
 
-    const idempotencyKey = `idemp_${movie.id}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const randomSuffix = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+      : `${Date.now()}`;
+    const idempotencyKey = `idemp_${movie.id}_${Date.now()}_${randomSuffix}`;
 
     try {
       const payload = {

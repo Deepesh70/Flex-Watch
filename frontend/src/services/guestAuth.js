@@ -12,8 +12,12 @@ export function getGuestId() {
     if (!guestId) {
       if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         guestId = `guest_${crypto.randomUUID()}`;
+      } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        const randArray = new Uint32Array(2);
+        crypto.getRandomValues(randArray);
+        guestId = `guest_${randArray[0].toString(36)}${randArray[1].toString(36)}_${Date.now()}`;
       } else {
-        guestId = `guest_${Math.random().toString(36).substring(2, 15)}_${Date.now()}`;
+        guestId = `guest_anon_${Date.now()}`;
       }
       localStorage.setItem(GUEST_STORAGE_KEY, guestId);
     }

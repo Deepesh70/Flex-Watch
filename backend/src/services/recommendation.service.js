@@ -27,62 +27,63 @@ function loadRecommendations() {
   return recommendationsMap;
 }
 
+function findInDataset(map, movieTitle, movieId) {
+  if (movieId !== undefined && movieId !== null) {
+    const idKey = String(movieId);
+    const exactById = map[idKey];
+    if (exactById?.length > 0) {
+      return exactById;
+    }
+  }
+
+  if (!movieTitle) return null;
+
+  const exact = map[movieTitle];
+  if (exact?.length > 0) {
+    return exact;
+  }
+
+  const lower = movieTitle.trim().toLowerCase();
+  const matchedKey = Object.keys(map).find((k) => k.toLowerCase() === lower);
+  return matchedKey && map[matchedKey]?.length > 0 ? map[matchedKey] : null;
+}
+
+async function fetchTmdbFallback(movieId) {
+  if (!movieId || !env.TMDB_API_KEY) return null;
+
+  try {
+    const { data: similar } = await tmdbService.getSimilarMovies(movieId);
+    return (similar || []).slice(0, 8).map((m) => ({
+      title: m.title || m.original_title,
+      similarity_score: m.vote_average ? (m.vote_average / 10).toFixed(2) : '0.75',
+      id: m.id,
+      poster_path: m.poster_path,
+      vote_average: m.vote_average,
+    }));
+  } catch (err) {
+    logger.warn({ err: err.message, movieId }, 'Could not fetch similar movies fallback');
+    return null;
+  }
+}
+
 const recommendationService = {
   getRecommendationsForMovie: async (movieTitle, movieId) => {
     const map = loadRecommendations();
 
-    // 1. Try ML dataset lookup by stable movie identifier first
-    if (movieId !== undefined && movieId !== null) {
-      const idKey = String(movieId);
-      const exactById = map[idKey];
-      if (exactById && Array.isArray(exactById) && exactById.length > 0) {
-        return {
-          source: 'ml_dataset',
-          recommendations: exactById,
-        };
-      }
+    const datasetRecs = findInDataset(map, movieTitle, movieId);
+    if (datasetRecs) {
+      return {
+        source: 'ml_dataset',
+        recommendations: datasetRecs,
+      };
     }
 
-    // 2. Try ML dataset exact or case-insensitive match by title
-    if (movieTitle) {
-      const exact = map[movieTitle];
-      if (exact && Array.isArray(exact) && exact.length > 0) {
-        return {
-          source: 'ml_dataset',
-          recommendations: exact,
-        };
-      }
-
-      // Case-insensitive check
-      const lower = movieTitle.trim().toLowerCase();
-      const matchedKey = Object.keys(map).find((k) => k.toLowerCase() === lower);
-      if (matchedKey && map[matchedKey]?.length > 0) {
-        return {
-          source: 'ml_dataset',
-          recommendations: map[matchedKey],
-        };
-      }
-    }
-
-    // 2. Fallback to TMDB similar movies if not found in offline dataset and TMDB is configured
-    if (movieId && env.TMDB_API_KEY) {
-      try {
-        const { data: similar } = await tmdbService.getSimilarMovies(movieId);
-        const formatted = (similar || []).slice(0, 8).map((m) => ({
-          title: m.title || m.original_title,
-          similarity_score: m.vote_average ? (m.vote_average / 10).toFixed(2) : '0.75',
-          id: m.id,
-          poster_path: m.poster_path,
-          vote_average: m.vote_average,
-        }));
-
-        return {
-          source: 'tmdb_fallback',
-          recommendations: formatted,
-        };
-      } catch (err) {
-        logger.warn({ err: err.message, movieId }, 'Could not fetch similar movies fallback');
-      }
+    const fallbackRecs = await fetchTmdbFallback(movieId);
+    if (fallbackRecs) {
+      return {
+        source: 'tmdb_fallback',
+        recommendations: fallbackRecs,
+      };
     }
 
     return {

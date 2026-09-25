@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const axios = require('axios');
 const { env } = require('../config/env');
 const { cacheService } = require('./cache.service');
@@ -39,7 +40,8 @@ async function fetchWithRetry(url, params = {}, maxRetries = 3) {
         logger.error({ url, status: err.response?.status, code: err.code, error: err.message }, 'TMDB API request failed');
         throw err;
       }
-      const backoffMs = Math.min(2000, 150 * Math.pow(2, attempt)) + Math.random() * 100;
+      const jitter = crypto.randomInt(0, 100);
+      const backoffMs = Math.min(2000, 150 * Math.pow(2, attempt)) + jitter;
       logger.warn({ attempt, backoffMs, url, code: err.code, error: err.message }, 'Retrying TMDB request after transient failure');
       await new Promise((resolve) => setTimeout(resolve, backoffMs));
     }

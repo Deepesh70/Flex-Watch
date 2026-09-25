@@ -14,11 +14,11 @@ const Poster = (props) => {
 
   // Compute poster image URL directly from props
   const rawPoster = props.poster_path;
-  const posterUrl = rawPoster
-    ? rawPoster.startsWith('http')
-      ? rawPoster
-      : `https://image.tmdb.org/t/p/w500${rawPoster}`
-    : FALLBACK_POSTER;
+  const getPosterUrl = (path) => {
+    if (!path) return FALLBACK_POSTER;
+    return path.startsWith('http') ? path : `https://image.tmdb.org/t/p/w500${path}`;
+  };
+  const posterUrl = getPosterUrl(rawPoster);
 
   // Reset error state whenever movie ID or poster_path prop changes
   useEffect(() => {

@@ -28,35 +28,38 @@ const MovieProvider = ({ children }) => {
 
   const [activeTrailer, setActiveTrailer] = useState(null); // { ...movie, videoKey, loading } or null
 
-  // Sync with Backend Watchlist on mount
+function normalizeServerItem(item) {
+  return {
+    id: item.tmdbId,
+    title: item.title,
+    overview: item.overview,
+    poster_path: item.posterPath,
+    backdrop_path: item.backdropPath,
+    vote_average: item.voteAverage,
+    release_date: item.releaseDate,
+    media_type: item.mediaType,
+  };
+}
+
+function mergeWatchlists(serverItems, localItems) {
+  const formatted = serverItems.map(normalizeServerItem);
+  const combined = [...formatted];
+  for (const item of localItems) {
+    if (!combined.some((c) => c.id === item.id)) {
+      combined.push(item);
+    }
+  }
+  return combined;
+}
+
+// Sync with Backend Watchlist on mount
   useEffect(() => {
     let isMounted = true;
     const loadBackendWatchlist = async () => {
       try {
         const serverItems = await watchlistService.getWatchlist();
-        if (serverItems && Array.isArray(serverItems) && serverItems.length > 0 && isMounted) {
-          // Normalize server items to match client movie item structure
-          const formatted = serverItems.map((item) => ({
-            id: item.tmdbId,
-            title: item.title,
-            overview: item.overview,
-            poster_path: item.posterPath,
-            backdrop_path: item.backdropPath,
-            vote_average: item.voteAverage,
-            release_date: item.releaseDate,
-            media_type: item.mediaType,
-          }));
-
-          // Merge without duplicates
-          setMyList((prev) => {
-            const combined = [...formatted];
-            prev.forEach((p) => {
-              if (!combined.some((c) => c.id === p.id)) {
-                combined.push(p);
-              }
-            });
-            return combined;
-          });
+        if (serverItems?.length > 0 && isMounted) {
+          setMyList((prev) => mergeWatchlists(serverItems, prev));
         }
       } catch (err) {
         console.warn('Could not sync with backend watchlist:', err.message);
