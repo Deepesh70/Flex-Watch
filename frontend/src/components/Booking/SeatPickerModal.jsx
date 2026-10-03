@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaFilm, FaCalendarDay, FaClock, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTimes, FaFilm, FaCalendarDay, FaClock, FaCheck, FaExclamationTriangle, FaLock, FaBuilding, FaCreditCard } from 'react-icons/fa';
 import bookingService from '../../services/booking.service';
+import { getGuestId } from '../../services/guestAuth';
 
 const SEAT_TIERS = {
-  VIP: { rows: ['A', 'B'], price: 15.0, label: 'VIP Recliners ($15.00)', color: 'border-accent-gold/60 text-accent-gold' },
-  PREMIUM: { rows: ['C', 'D', 'E'], price: 12.0, label: 'Premium ($12.00)', color: 'border-blue-400/60 text-blue-400' },
-  STANDARD: { rows: ['F', 'G'], price: 10.0, label: 'Standard ($10.00)', color: 'border-gray-400/60 text-gray-300' },
+  VIP: { rows: ['A', 'B'], price: 15.0, label: 'VIP Recliners', color: 'border-accent-gold/60 text-accent-gold' },
+  PREMIUM: { rows: ['C', 'D', 'E'], price: 12.0, label: 'Premium', color: 'border-blue-400/60 text-blue-400' },
+  STANDARD: { rows: ['F', 'G'], price: 10.0, label: 'Standard', color: 'border-gray-400/60 text-gray-300' },
 };
 
 const DATES = [
@@ -22,37 +23,119 @@ const TIME_SLOTS = [
 ];
 
 const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
+  const [venues, setVenues] = useState([]);
+  const [selectedTheaterId, setSelectedTheaterId] = useState(null);
+  const [selectedScreenId, setSelectedScreenId] = useState(null);
+  const [selectedShowId, setSelectedShowId] = useState(null);
+
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(2); // default 07:30 PM
   const [occupiedSeats, setOccupiedSeats] = useState([]);
+  const [heldByOthers, setHeldByOthers] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [holdExpiresAt, setHoldExpiresAt] = useState(null);
+  const [holdRemainingSeconds, setHoldRemainingSeconds] = useState(null);
+
+  const currentUserId = token || getGuestId();
+
+  // 0. Load real theaters, screens, and shows for this movie
+  useEffect(() => {
+    let isMounted = true;
+    const fetchVenues = async () => {
+      try {
+        const data = await bookingService.getMovieShows(movie.id, movie.title || movie.original_title);
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setVenues(data);
+          const firstTheater = data[0];
+          setSelectedTheaterId(firstTheater.theaterId);
+          if (firstTheater.screens?.length > 0) {
+            const firstScreen = firstTheater.screens[0];
+            setSelectedScreenId(firstScreen.screenId);
+            if (firstScreen.shows?.length > 0) {
+              setSelectedShowId(firstScreen.shows[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        // Fallback gracefully to offline slots
+      }
+    };
+
+    fetchVenues();
+    return () => {
+      isMounted = false;
+    };
+  }, [movie.id, movie.title, movie.original_title]);
+
+  const currentTheater = venues.find((t) => t.theaterId === selectedTheaterId) || venues[0] || null;
+  const currentScreen = currentTheater?.screens?.find((s) => s.screenId === selectedScreenId) || currentTheater?.screens?.[0] || null;
+  const currentShow = currentScreen?.shows?.find((s) => s.id === selectedShowId) || currentScreen?.shows?.[0] || null;
 
   // Calculate selected showtime Date
   const getCalculatedShowtime = () => {
+    if (currentShow?.startTime) {
+      return currentShow.startTime;
+    }
     const base = new Date();
-    base.setDate(base.getDate() + DATES[selectedDateIndex].offsetDays);
-    const [hours, minutes] = TIME_SLOTS[selectedSlotIndex].time.split(':').map(Number);
+    base.setDate(base.getDate() + (DATES[selectedDateIndex]?.offsetDays || 0));
+    const [hours, minutes] = (TIME_SLOTS[selectedSlotIndex]?.time || '19:30').split(':').map(Number);
     base.setHours(hours, minutes, 0, 0);
     return base.toISOString();
   };
 
   const currentShowtimeISO = getCalculatedShowtime();
+  const currentShowId = currentShow?.id || null;
+  const basePrice = currentShow?.basePrice || 12.0;
 
-  // Load occupied seats on movie or showtime change
+  const handleSelectTheater = (theaterId) => {
+    setSelectedTheaterId(theaterId);
+    setSelectedSeats([]);
+    const t = venues.find((v) => v.theaterId === theaterId);
+    if (t?.screens?.length > 0) {
+      setSelectedScreenId(t.screens[0].screenId);
+      if (t.screens[0].shows?.length > 0) {
+        setSelectedShowId(t.screens[0].shows[0].id);
+      }
+    }
+  };
+
+  const handleSelectShow = (showId) => {
+    setSelectedShowId(showId);
+    setSelectedSeats([]);
+  };
+
+  const formatShowtime = (isoString) => {
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (e) {
+      return isoString;
+    }
+  };
+
+  // 1. Load occupied & held seats on movie or showtime change
   useEffect(() => {
     let isMounted = true;
     const loadOccupied = async () => {
       setLoadingSeats(true);
       setErrorMessage('');
       try {
-        const occupied = await bookingService.getOccupiedSeats(movie.id, currentShowtimeISO);
+        const res = await bookingService.getOccupiedAndHeldSeats(movie.id, currentShowtimeISO);
         if (isMounted) {
-          setOccupiedSeats(occupied || []);
-          // Deselect any seats that are now occupied
-          setSelectedSeats((prev) => prev.filter((s) => !occupied.includes(s.id)));
+          const occupied = res.occupiedSeats || [];
+          const held = res.heldSeats || [];
+          setOccupiedSeats(occupied);
+
+          const otherHolds = held
+            .filter((h) => h.userId !== currentUserId)
+            .map((h) => h.seatCode);
+          setHeldByOthers(otherHolds);
+
+          // Deselect any seats that are now occupied or held by others
+          setSelectedSeats((prev) => prev.filter((s) => !occupied.includes(s.id) && !otherHolds.includes(s.id)));
           setLoadingSeats(false);
         }
       } catch (err) {
@@ -64,25 +147,131 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
     return () => {
       isMounted = false;
     };
-  }, [movie.id, currentShowtimeISO]);
+  }, [movie.id, currentShowtimeISO, currentUserId]);
+
+  // 2. Real-time WebSocket connection to room
+  useEffect(() => {
+    let ws = null;
+    try {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = window.location.port === '3000'
+        ? `${window.location.hostname}:5001`
+        : window.location.host;
+      ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/seats`);
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          action: 'subscribe',
+          movieId: movie.id,
+          showtime: currentShowtimeISO,
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'SEATS_HELD') {
+            if (data.userId !== currentUserId) {
+              setHeldByOthers((prev) => Array.from(new Set([...prev, ...data.seats])));
+              setSelectedSeats((prev) => prev.filter((s) => !data.seats.includes(s.id)));
+            }
+          } else if (data.type === 'SEATS_RELEASED') {
+            setHeldByOthers((prev) => prev.filter((seat) => !data.seats.includes(seat)));
+            setOccupiedSeats((prev) => prev.filter((seat) => !data.seats.includes(seat)));
+          } else if (data.type === 'SEATS_CONFIRMED') {
+            setOccupiedSeats((prev) => Array.from(new Set([...prev, ...data.seats])));
+            setHeldByOthers((prev) => prev.filter((seat) => !data.seats.includes(seat)));
+            if (data.userId !== currentUserId) {
+              setSelectedSeats((prev) => prev.filter((s) => !data.seats.includes(s.id)));
+            }
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+      };
+    } catch (e) {
+      // WS fallback
+    }
+
+    return () => {
+      if (ws) ws.close();
+    };
+  }, [movie.id, currentShowtimeISO, currentUserId]);
+
+  // 3. Countdown timer for temporary 10-minute hold
+  useEffect(() => {
+    if (selectedSeats.length === 0 || !holdExpiresAt) {
+      setHoldRemainingSeconds(null);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.round((holdExpiresAt - Date.now()) / 1000));
+      setHoldRemainingSeconds(remaining);
+
+      if (remaining <= 0) {
+        setErrorMessage('Your 10-minute seat hold has expired. Please reselect your seats.');
+        setSelectedSeats([]);
+        setHoldExpiresAt(null);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedSeats.length, holdExpiresAt]);
 
   const getSeatTier = (rowLetter) => {
-    if (SEAT_TIERS.VIP.rows.includes(rowLetter)) return SEAT_TIERS.VIP;
-    if (SEAT_TIERS.PREMIUM.rows.includes(rowLetter)) return SEAT_TIERS.PREMIUM;
-    return SEAT_TIERS.STANDARD;
+    if (SEAT_TIERS.VIP.rows.includes(rowLetter)) {
+      return { ...SEAT_TIERS.VIP, price: Number((basePrice * 1.25).toFixed(2)) };
+    }
+    if (SEAT_TIERS.PREMIUM.rows.includes(rowLetter)) {
+      return { ...SEAT_TIERS.PREMIUM, price: Number(basePrice.toFixed(2)) };
+    }
+    return { ...SEAT_TIERS.STANDARD, price: Number((basePrice * 0.85).toFixed(2)) };
   };
 
-  const handleSeatClick = (seatId, tier) => {
+  const handleSeatClick = async (seatId, tier) => {
     setErrorMessage('');
     const exists = selectedSeats.some((s) => s.id === seatId);
+
     if (exists) {
-      setSelectedSeats(selectedSeats.filter((s) => s.id !== seatId));
+      setSelectedSeats((prev) => prev.filter((s) => s.id !== seatId));
+      try {
+        await bookingService.releaseSeats({
+          movieId: movie.id,
+          showtime: currentShowtimeISO,
+          showId: currentShowId,
+          seats: [seatId],
+        }, token);
+      } catch (err) {
+        // non-blocking
+      }
     } else {
       if (selectedSeats.length >= 8) {
         setErrorMessage('You can select a maximum of 8 seats per booking.');
         return;
       }
-      setSelectedSeats([...selectedSeats, { id: seatId, price: tier.price }]);
+
+      try {
+        const holdRes = await bookingService.holdSeats({
+          movieId: movie.id,
+          showtime: currentShowtimeISO,
+          showId: currentShowId,
+          seats: [seatId],
+        }, token);
+
+        if (holdRes?.success) {
+          setSelectedSeats((prev) => [...prev, { id: seatId, price: tier.price }]);
+          setHoldExpiresAt(Date.now() + 600 * 1000);
+        }
+      } catch (err) {
+        if (err.response?.status === 409) {
+          setErrorMessage(err.response.data?.detail || 'This seat is currently held by another customer.');
+          setHeldByOthers((prev) => Array.from(new Set([...prev, seatId])));
+        } else {
+          // Graceful fallback if running offline
+          setSelectedSeats((prev) => [...prev, { id: seatId, price: tier.price }]);
+        }
+      }
     }
   };
 
@@ -108,22 +297,46 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
         movieId: movie.id,
         movieTitle: movie.title || movie.original_title,
         showtime: currentShowtimeISO,
+        showId: currentShowId,
         seats: selectedSeats.map((s) => s.id),
         totalAmount,
+        status: 'PENDING_PAYMENT',
       };
 
       const booking = await bookingService.createBooking(payload, token);
+
+      // Create Stripe or sandbox checkout session
+      const checkoutRes = await bookingService.createCheckoutSession({
+        bookingId: booking.id,
+        successUrl: `${window.location.origin}/booking/success`,
+        cancelUrl: `${window.location.origin}/booking/cancel`,
+      }, token);
+
+      if (checkoutRes && !checkoutRes.isMock && checkoutRes.checkoutUrl) {
+        window.location.href = checkoutRes.checkoutUrl;
+        return;
+      }
+
+      // Sandbox simulated checkout: auto-confirm session and present ticket
+      const confirmedRes = await bookingService.confirmPaymentSession({
+        bookingId: booking.id,
+        sessionId: checkoutRes?.sessionId,
+      }, token);
+
       setSubmitting(false);
-      onBookingSuccess(booking);
+      onBookingSuccess(confirmedRes?.booking || booking);
     } catch (err) {
       setSubmitting(false);
       if (err.response?.status === 409) {
         setErrorMessage(
           err.response.data?.detail || 'One or more of your chosen seats was just reserved by another user. Please choose another seat.'
         );
-        // Refresh occupied seats
-        const refreshed = await bookingService.getOccupiedSeats(movie.id, currentShowtimeISO);
-        setOccupiedSeats(refreshed);
+        // Refresh occupied and held seats
+        const refreshed = await bookingService.getOccupiedAndHeldSeats(movie.id, currentShowtimeISO);
+        const otherHolds = (refreshed.heldSeats || [])
+          .filter((h) => h.userId !== currentUserId)
+          .map((h) => h.seatCode);
+        setHeldByOthers(otherHolds);
       } else {
         setErrorMessage(err.response?.data?.detail || err.message || 'Failed to complete reservation.');
       }
@@ -138,12 +351,27 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-dark-800/90">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-accent-gold">
-              Cinema Seat Selection
-            </span>
-            <h3 className="text-lg sm:text-xl font-black text-white truncate max-w-md sm:max-w-xl">
-              {movie.title || movie.original_title}
-            </h3>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-accent-gold">
+                Cinema Seat Selection
+              </span>
+              {holdRemainingSeconds !== null && holdRemainingSeconds > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-bold animate-pulse">
+                  <FaClock className="w-3 h-3" />
+                  <span>Hold: {Math.floor(holdRemainingSeconds / 60)}:{(holdRemainingSeconds % 60).toString().padStart(2, '0')}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5 mt-0.5 flex-wrap">
+              <h3 className="text-lg sm:text-xl font-black text-white truncate max-w-xs sm:max-w-md">
+                {movie.title || movie.original_title}
+              </h3>
+              {currentTheater && currentScreen && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[11px] font-bold">
+                  {currentTheater.name} • {currentScreen.format}
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -153,52 +381,138 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
           </button>
         </div>
 
-        {/* Showtime & Date Pickers */}
-        <div className="px-6 py-4 bg-dark-800/40 border-b border-white/5 flex flex-wrap items-center justify-between gap-4">
-          {/* Date Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
-              <FaCalendarDay className="text-accent-gold" /> Date:
-            </span>
-            <div className="flex gap-1.5">
-              {DATES.map((d, index) => (
-                <button
-                  key={d.label}
-                  onClick={() => setSelectedDateIndex(index)}
-                  className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all ${
-                    selectedDateIndex === index
-                      ? 'bg-accent-gold text-dark-900 shadow-md shadow-accent-gold/20'
-                      : 'bg-dark-700/80 text-gray-300 hover:text-white hover:bg-dark-600'
-                  }`}
-                >
-                  {d.label}
-                </button>
-              ))}
+        {/* Showtime, Cinema & Date Pickers */}
+        {venues.length > 0 ? (
+          <div className="px-6 py-3.5 bg-dark-800/40 border-b border-white/5 space-y-3">
+            {/* Cinema Venues */}
+            <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
+              <span className="text-xs font-semibold text-gray-400 flex items-center gap-1.5 shrink-0">
+                <FaBuilding className="text-accent-gold" /> Cinema:
+              </span>
+              <div className="flex gap-2">
+                {venues.map((theater) => (
+                  <button
+                    key={theater.theaterId}
+                    onClick={() => handleSelectTheater(theater.theaterId)}
+                    className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                      currentTheater?.theaterId === theater.theaterId
+                        ? 'bg-accent-gold text-dark-900 shadow-md shadow-accent-gold/20'
+                        : 'bg-dark-700/80 text-gray-300 hover:text-white hover:bg-dark-600'
+                    }`}
+                  >
+                    <span>{theater.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      currentTheater?.theaterId === theater.theaterId ? 'bg-dark-900/20 text-dark-900 font-extrabold' : 'bg-white/10 text-gray-400'
+                    }`}>
+                      {theater.city}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Timeslot Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
-              <FaClock className="text-accent-gold" /> Slot:
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {TIME_SLOTS.map((slot, index) => (
-                <button
-                  key={slot.time}
-                  onClick={() => setSelectedSlotIndex(index)}
-                  className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all ${
-                    selectedSlotIndex === index
-                      ? 'bg-accent-gold text-dark-900 shadow-md shadow-accent-gold/20'
-                      : 'bg-dark-700/80 text-gray-300 hover:text-white hover:bg-dark-600'
-                  }`}
-                >
-                  {slot.label}
-                </button>
-              ))}
+            {/* Screen Formats and Showtimes */}
+            {currentTheater && (
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/5">
+                {/* Screens */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
+                    <FaFilm className="text-accent-gold" /> Screen:
+                  </span>
+                  <div className="flex gap-1.5">
+                    {currentTheater.screens?.map((screen) => (
+                      <button
+                        key={screen.screenId}
+                        onClick={() => {
+                          setSelectedScreenId(screen.screenId);
+                          setSelectedSeats([]);
+                          if (screen.shows?.length > 0) {
+                            setSelectedShowId(screen.shows[0].id);
+                          }
+                        }}
+                        className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-all ${
+                          currentScreen?.screenId === screen.screenId
+                            ? 'bg-blue-500 text-white shadow-sm'
+                            : 'bg-dark-700/60 text-gray-300 hover:text-white hover:bg-dark-600'
+                        }`}
+                      >
+                        {screen.name} ({screen.format})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Showtimes for current screen */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
+                    <FaClock className="text-accent-gold" /> Showtime:
+                  </span>
+                  <div className="flex gap-1.5">
+                    {currentScreen?.shows?.map((show) => (
+                      <button
+                        key={show.id}
+                        onClick={() => handleSelectShow(show.id)}
+                        className={`text-xs px-3 py-1 rounded-lg font-bold transition-all ${
+                          currentShow?.id === show.id
+                            ? 'bg-accent-gold text-dark-900 shadow-md shadow-accent-gold/20'
+                            : 'bg-dark-700/60 text-gray-300 hover:text-white hover:bg-dark-600'
+                        }`}
+                      >
+                        {formatShowtime(show.startTime)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="px-6 py-4 bg-dark-800/40 border-b border-white/5 flex flex-wrap items-center justify-between gap-4">
+            {/* Date Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
+                <FaCalendarDay className="text-accent-gold" /> Date:
+              </span>
+              <div className="flex gap-1.5">
+                {DATES.map((d, index) => (
+                  <button
+                    key={d.label}
+                    onClick={() => setSelectedDateIndex(index)}
+                    className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all ${
+                      selectedDateIndex === index
+                        ? 'bg-accent-gold text-dark-900 shadow-md shadow-accent-gold/20'
+                        : 'bg-dark-700/80 text-gray-300 hover:text-white hover:bg-dark-600'
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Timeslot Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
+                <FaClock className="text-accent-gold" /> Slot:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {TIME_SLOTS.map((slot, index) => (
+                  <button
+                    key={slot.time}
+                    onClick={() => setSelectedSlotIndex(index)}
+                    className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all ${
+                      selectedSlotIndex === index
+                        ? 'bg-accent-gold text-dark-900 shadow-md shadow-accent-gold/20'
+                        : 'bg-dark-700/80 text-gray-300 hover:text-white hover:bg-dark-600'
+                    }`}
+                  >
+                    {slot.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Seating Map Canvas Area */}
         <div className="p-6 sm:p-8 flex flex-col items-center select-none overflow-x-auto">
@@ -231,23 +545,26 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
                     {[1, 2, 3, 4].map((num) => {
                       const seatId = `${row}${num}`;
                       const isOccupied = occupiedSeats.includes(seatId);
+                      const isHeldByOther = heldByOthers.includes(seatId);
                       const isSelected = selectedSeats.some((s) => s.id === seatId);
 
                       return (
                         <button
                           key={seatId}
-                          disabled={isOccupied}
+                          disabled={isOccupied || isHeldByOther}
                           onClick={() => handleSeatClick(seatId, tier)}
-                          title={`${seatId} (${tier.label})`}
+                          title={isHeldByOther ? `${seatId} (Held by another customer)` : `${seatId} (${tier.label})`}
                           className={`w-8 h-8 sm:w-9 sm:h-9 rounded-t-lg rounded-b text-[11px] font-bold transition-all flex items-center justify-center relative ${
                             isOccupied
                               ? 'bg-dark-800 text-gray-600 border border-white/5 cursor-not-allowed opacity-40'
+                              : isHeldByOther
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 cursor-not-allowed animate-pulse shadow-sm'
                               : isSelected
                               ? 'bg-accent-gold text-dark-900 border border-accent-gold shadow-lg shadow-accent-gold/30 scale-105'
                               : 'bg-dark-800/90 text-gray-300 border border-white/10 hover:border-accent-gold/60 hover:text-white hover:scale-105'
                           }`}
                         >
-                          {isSelected ? <FaCheck className="w-3 h-3" /> : num}
+                          {isSelected ? <FaCheck className="w-3 h-3" /> : isHeldByOther ? <FaLock className="w-2.5 h-2.5 text-amber-400" /> : num}
                         </button>
                       );
                     })}
@@ -261,23 +578,26 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
                     {[5, 6, 7, 8].map((num) => {
                       const seatId = `${row}${num}`;
                       const isOccupied = occupiedSeats.includes(seatId);
+                      const isHeldByOther = heldByOthers.includes(seatId);
                       const isSelected = selectedSeats.some((s) => s.id === seatId);
 
                       return (
                         <button
                           key={seatId}
-                          disabled={isOccupied}
+                          disabled={isOccupied || isHeldByOther}
                           onClick={() => handleSeatClick(seatId, tier)}
-                          title={`${seatId} (${tier.label})`}
+                          title={isHeldByOther ? `${seatId} (Held by another customer)` : `${seatId} (${tier.label})`}
                           className={`w-8 h-8 sm:w-9 sm:h-9 rounded-t-lg rounded-b text-[11px] font-bold transition-all flex items-center justify-center relative ${
                             isOccupied
                               ? 'bg-dark-800 text-gray-600 border border-white/5 cursor-not-allowed opacity-40'
+                              : isHeldByOther
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 cursor-not-allowed animate-pulse shadow-sm'
                               : isSelected
                               ? 'bg-accent-gold text-dark-900 border border-accent-gold shadow-lg shadow-accent-gold/30 scale-105'
                               : 'bg-dark-800/90 text-gray-300 border border-white/10 hover:border-accent-gold/60 hover:text-white hover:scale-105'
                           }`}
                         >
-                          {isSelected ? <FaCheck className="w-3 h-3" /> : num}
+                          {isSelected ? <FaCheck className="w-3 h-3" /> : isHeldByOther ? <FaLock className="w-2.5 h-2.5 text-amber-400" /> : num}
                         </button>
                       );
                     })}
@@ -303,17 +623,23 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
               <span>Selected</span>
             </div>
             <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-t bg-amber-500/20 border border-amber-500/50 flex items-center justify-center">
+                <FaLock className="w-2 h-2 text-amber-400" />
+              </div>
+              <span className="text-amber-400 font-semibold">Held (10m)</span>
+            </div>
+            <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-t bg-dark-800 border border-white/5 opacity-40" />
               <span>Occupied</span>
             </div>
             <div className="flex items-center gap-2 pl-4 border-l border-white/10">
-              <span className="text-accent-gold font-bold">Rows A-B:</span> VIP ($15)
+              <span className="text-accent-gold font-bold">Rows A-B:</span> VIP (${(basePrice * 1.25).toFixed(2)})
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-blue-400 font-bold">Rows C-E:</span> Premium ($12)
+              <span className="text-blue-400 font-bold">Rows C-E:</span> Premium (${basePrice.toFixed(2)})
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-gray-400 font-bold">Rows F-G:</span> Standard ($10)
+              <span className="text-gray-400 font-bold">Rows F-G:</span> Standard (${(basePrice * 0.85).toFixed(2)})
             </div>
           </div>
         </div>
@@ -343,6 +669,11 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
               <p className="text-xl font-black text-accent-gold">
                 ${totalAmount.toFixed(2)}
               </p>
+              {currentTheater && (
+                <span className="text-[10px] text-gray-400 block -mt-0.5 truncate max-w-[160px]">
+                  {currentTheater.name} • {currentScreen?.format || 'Standard'}
+                </span>
+              )}
             </div>
           </div>
 
@@ -363,7 +694,12 @@ const SeatPickerModal = ({ movie, onClose, onBookingSuccess, token }) => {
                   : 'bg-dark-700 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {submitting ? 'Confirming Reservation...' : `Book ${selectedSeats.length} Ticket${selectedSeats.length > 1 ? 's' : ''}`}
+              <FaCreditCard className="w-3.5 h-3.5" />
+              <span>
+                {submitting
+                  ? 'Processing Checkout...'
+                  : `Pay & Book ${selectedSeats.length} Ticket${selectedSeats.length > 1 ? 's' : ''} ($${totalAmount.toFixed(2)})`}
+              </span>
             </button>
           </div>
         </div>

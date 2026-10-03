@@ -14,7 +14,7 @@ describe('TMDB Service', () => {
   test('getNowPlaying queries TMDB endpoint', async () => {
     const movies = await tmdbService.getNowPlaying();
     expect(Array.isArray(movies)).toBe(true);
-  });
+  }, 15000);
 
   test('getPopular queries TMDB endpoint', async () => {
     const movies = await tmdbService.getPopular();

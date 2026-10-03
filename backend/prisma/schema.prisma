@@ -39,6 +39,43 @@ model WatchlistItem {
   @@index([tmdbId])
 }
 
+model Theater {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  screens   Screen[]
+  createdAt DateTime @default(now())
+}
+
+model Screen {
+  id         String   @id @default(cuid())
+  theaterId  String
+  theater    Theater  @relation(fields: [theaterId], references: [id], onDelete: Cascade)
+  name       String
+  format     String   @default("IMAX") // "2D", "3D", "IMAX", "Dolby Atmos"
+  totalSeats Int      @default(56)
+  shows      Show[]
+  createdAt  DateTime @default(now())
+
+  @@index([theaterId])
+}
+
+model Show {
+  id            String         @id @default(cuid())
+  screenId      String
+  screen        Screen         @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  movieId       Int
+  movieTitle    String
+  startTime     DateTime
+  basePrice     Float          @default(12.0)
+  bookings      Booking[]
+  reservedSeats ReservedSeat[]
+  createdAt     DateTime       @default(now())
+
+  @@index([screenId])
+  @@index([movieId, startTime])
+}
+
 model Booking {
   id             String   @id @default(cuid())
   userId         String
@@ -47,12 +84,36 @@ model Booking {
   movieId        Int
   movieTitle     String
   showtime       DateTime
-  seats          String   // Comma-separated or JSON string of seat identifiers e.g. "A1,A2"
-  totalAmount    Float
-  status         String   @default("CONFIRMED") // "PENDING", "CONFIRMED", "CANCELLED"
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  showId         String?
+  show           Show?    @relation(fields: [showId], references: [id], onDelete: SetNull)
+  seats           String   // Comma-separated or JSON string of seat identifiers e.g. "A1,A2"
+  totalAmount     Float
+  status          String   @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "CANCELLED", "EXPIRED"
+  stripeSessionId String?  @unique
+  paymentIntentId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  reservedSeats  ReservedSeat[]
 
   @@index([userId])
   @@index([movieId])
+  @@index([showId])
+  @@index([stripeSessionId])
+}
+
+model ReservedSeat {
+  id        String   @id @default(cuid())
+  movieId   Int
+  showtime  DateTime
+  showId    String?
+  show      Show?    @relation(fields: [showId], references: [id], onDelete: SetNull)
+  seatCode  String   // e.g. "A1", "C4"
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([movieId, showtime, seatCode])
+  @@index([bookingId])
+  @@index([movieId, showtime])
+  @@index([showId])
 }

@@ -14,6 +14,7 @@ Welcome to the comprehensive technical documentation for **Flex-Watch**, an ente
 | 🎬 **[Feature Walkthrough](./feature-walkthrough.md)** | Detailed breakdown of core features: Hero trailer playback, catalog search, persistent watchlist, dynamic ML recommendations, and health probes. |
 | 🚀 **[GitHub Actions CI/CD Guide](./github-workflows-guide.md)** | Complete blueprint for setting up automated CI/CD workflows, runners, caching, secrets, and quality gates on any repo. |
 | 🎬 **[Launch Video Guide (/brag)](./brag-launch-video-guide.md)** | Guide on using the `/brag` agent skill and Hyperframes to create automated launch videos for Flex-Watch. |
+| 🎨 **[Frontend Design Skills Guide](./frontend-design-skills.md)** | Guide on using Taste Skill and Impeccable for anti-slop webpage building and design polish. |
 
 ---
 

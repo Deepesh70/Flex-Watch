@@ -20,6 +20,8 @@ const envSchema = z.object({
   CACHE_TTL_DEFAULT_SEC: z.coerce.number().default(3600), // 1 hour
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000), // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(500),
+  STRIPE_SECRET_KEY: z.string().optional().default(process.env.STRIPE_SECRET_KEY || ''),
+  STRIPE_WEBHOOK_SECRET: z.string().optional().default(process.env.STRIPE_WEBHOOK_SECRET || ''),
 });
 
 

@@ -15,6 +15,7 @@ const seriesRoutes = require('./routes/series.routes');
 const searchRoutes = require('./routes/search.routes');
 const watchlistRoutes = require('./routes/watchlist.routes');
 const bookingRoutes = require('./routes/booking.routes');
+const paymentRoutes = require('./routes/payment.routes');
 
 const app = express();
 
@@ -50,7 +51,14 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, res, buf) => {
+    if (req.originalUrl && req.originalUrl.includes('/payments/webhook')) {
+      req.rawBody = buf;
+    }
+  },
+}));
 app.use(httpLogger);
 app.use(metricsMiddleware);
 
@@ -77,6 +85,7 @@ app.use('/api/v1/series', seriesRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/watchlist', watchlistRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 
 // 5. 404 Route Handler
@@ -92,11 +101,23 @@ app.use((req, res) => {
 // 6. Centralized Error Handler
 app.use(errorHandler);
 
+const { websocketService } = require('./services/websocket.service');
+const { reaperService } = require('./services/reaper.service');
+
 // 7. Server Bootstrap & Graceful Shutdown
 let server = null;
 
+function attachWebSockets(httpServer) {
+  if (httpServer) {
+    websocketService.init(httpServer);
+  }
+  return httpServer;
+}
+
 if (require.main === module) {
   server = app.listen(env.PORT, () => {
+    attachWebSockets(server);
+    reaperService.start(60000);
     logger.info({
       port: env.PORT,
       env: env.NODE_ENV,
@@ -106,6 +127,8 @@ if (require.main === module) {
 
   const gracefulShutdown = (signal) => {
     logger.info({ signal }, 'Received termination signal, initiating graceful shutdown...');
+    reaperService.stop();
+    websocketService.close();
     if (server) {
       server.close(() => {
         logger.info('HTTP server closed. Exiting process.');
@@ -124,4 +147,4 @@ if (require.main === module) {
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
-module.exports = { app, server };
+module.exports = { app, server, attachWebSockets };

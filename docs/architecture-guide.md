@@ -121,8 +121,39 @@ The relational schema is defined in [`backend/prisma/schema.prisma`](file:///c:/
 
 ```mermaid
 erDiagram
+    THEATER ||--o{ SCREEN : houses
+    SCREEN ||--o{ SHOW : schedules
+    SHOW ||--o{ BOOKING : reserves
+    SHOW ||--o{ RESERVED_SEAT : allocates
     USER ||--o{ WATCHLIST_ITEM : owns
     USER ||--o{ BOOKING : places
+    BOOKING ||--o{ RESERVED_SEAT : allocates
+
+    THEATER {
+        string id PK
+        string name
+        string city
+        datetime createdAt
+    }
+
+    SCREEN {
+        string id PK
+        string theaterId FK
+        string name
+        string format
+        int totalSeats
+        datetime createdAt
+    }
+
+    SHOW {
+        string id PK
+        string screenId FK
+        int movieId
+        string movieTitle
+        datetime startTime
+        float basePrice
+        datetime createdAt
+    }
 
     USER {
         string id PK
@@ -154,43 +185,61 @@ erDiagram
         int movieId
         string movieTitle
         datetime showtime
+        string showId FK
         string seats
         float totalAmount
         string status
+        string stripeSessionId UK
+        string paymentIntentId
         datetime createdAt
+        datetime updatedAt
+    }
+
+    RESERVED_SEAT {
+        string id PK
+        int movieId
+        datetime showtime
+        string showId FK
+        string seatCode UK
+        string bookingId FK
     }
 ```
 
-### Booking Subsystem & Idempotency Flow
+### Booking Subsystem & Payment State Machine
 
-The booking pipeline guarantees safe transactions even under duplicate clicks or spotty mobile connections:
+The booking pipeline guarantees safe transactions even under intense concurrent seat contention, transitioning through payment confirmation:
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client as Frontend Client
     participant API as Booking API (/api/v1/bookings)
+    participant Stripe as Stripe Gateway
     participant DB as Prisma (SQLite/Postgres)
-
-    Client->>API: GET /bookings/occupied?movieId=...&showtime=...
-    API->>DB: Query CONFIRMED bookings for showtime
-    DB-->>API: Return occupied seat array
-    API-->>Client: ["A1", "A2", "D4"]
+    participant WS as WebSocket Gateway
 
     Client->>API: POST /bookings (seats, showtime, idempotencyKey)
-    API->>DB: Check idempotencyKey in DB
-    alt Key exists (Replay)
-        DB-->>API: Return existing booking
-        API-->>Client: HTTP 200 (Existing Booking Object)
-    else New Key
-        API->>DB: Check if any requested seats overlap with existing CONFIRMED bookings
-        alt Seat Collision Detected
-            API-->>Client: HTTP 409 Conflict ("Seat(s) already reserved")
-        else Seats Available
-            API->>DB: Create Booking record (status: CONFIRMED)
-            DB-->>API: Persisted Booking
-            API-->>Client: HTTP 201 Created (Digital Ticket Payload)
-        end
+    API->>DB: prisma.$transaction (Insert Booking & ReservedSeats with PENDING_PAYMENT)
+    DB-->>API: Booking created (status: PENDING_PAYMENT)
+    API-->>Client: Booking object
+
+    Client->>API: POST /payments/create-checkout-session (bookingId)
+    API->>Stripe: Create Stripe Checkout Session (line_items, metadata)
+    Stripe-->>API: checkoutUrl & sessionId
+    API->>DB: Save stripeSessionId on Booking
+    API-->>Client: Return checkoutUrl
+
+    alt Hosted Stripe Checkout
+        Client->>Stripe: Customer enters payment info on Stripe Hosted Page
+        Stripe-->>API: POST /payments/webhook (checkout.session.completed)
+        API->>API: Verify cryptographic signature (stripe.webhooks.constructEvent)
+        API->>DB: prisma.$transaction (Update status: CONFIRMED, record paymentIntentId)
+        API->>WS: Broadcast SEATS_CONFIRMED to room subscribers
+    else Sandbox Simulated Mode
+        Client->>API: POST /payments/confirm-session (bookingId, sessionId)
+        API->>DB: prisma.$transaction (Update status: CONFIRMED)
+        API->>WS: Broadcast SEATS_CONFIRMED
+        API-->>Client: Return Confirmed Ticket Payload
     end
 ```
 

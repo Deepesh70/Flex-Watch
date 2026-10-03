@@ -29,8 +29,22 @@ The agent should automatically map user intent to skills:
 - Code review → `code-review-and-quality`
 - Refactoring / simplification → `code-simplification`
 - API or interface design → `api-and-interface-design`
-- UI work → `frontend-ui-engineering`
+- UI work / building a webpage → `design-taste-frontend` (taste-skill), then `impeccable`, `frontend-ui-engineering`
+- UI polish / critique / audit → `impeccable`, `design-taste-frontend`
 - Launch video / demo video / project showcase → `brag`
+
+### Webpage & Frontend Design Protocol
+
+Whenever the user asks to build a webpage, landing page, portfolio, or UI screen:
+1. **Taste First (`design-taste-frontend` / `taste-skill`):**
+   - Read the brief to infer page kind, target audience, vibe keywords, and brand constraints.
+   - Output the mandatory one-line Design Read before generating UI code.
+   - Enforce anti-slop rules: intentional font pairings, curated color palette with semantic CSS variables, varied spacing and layout rhythms, and restrained micro-interactions.
+2. **Craft & Polish (`impeccable`):**
+   - Apply craft floor standards: strong visual hierarchy, accessible contrast ratios, intentional negative space, clear state transitions (hover, active, focus, disabled).
+   - Reject generic AI boilerplate, uniform card grids, and unstyled default elements.
+3. **Engineering Standard (`frontend-ui-engineering`):**
+   - Implement responsive layouts (mobile through desktop), WCAG AA accessibility, proper component breakdown, and clean state handling.
 
 ### Lifecycle Mapping (Implicit Commands)
 

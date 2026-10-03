@@ -105,11 +105,19 @@ Flex-Watch features a flagship **BookMyShow-style cinema reservation engine** di
     * **VIP Recliners** (Rows A-B, $15.00/seat, gold accent)
     * **Premium Club** (Rows C-E, $12.00/seat, blue accent)
     * **Standard Cinema** (Rows F-G, $10.00/seat, slate accent)
-  * **Live Occupancy Sync**: Queries `/api/v1/bookings/occupied` in real-time to disable already-booked seats.
+  * **Real-Time WebSocket Seat Hold Gateway (`/ws/seats`)**:
+    * Connects live via WebSockets to room `showtime:<movieId>:<showtime>`.
+    * Whenever any customer selects a seat, an atomic hold (`SET NX EX 600`) is placed in Redis or Memory.
+    * Instantly broadcasts `SEATS_HELD`, causing the seat to turn amber/pulsing with a lock icon across all other users' screens in real time.
+    * Releasing or deselecting a seat broadcasts `SEATS_RELEASED`, restoring availability in 0ms.
+    * When booking confirms, broadcasts `SEATS_CONFIRMED`, turning the seat red/occupied across all clients.
+  * **10-Minute Hold Countdown Timer**:
+    * Displays a live countdown badge in the modal header (e.g. `Hold: 09:59`).
+    * If the countdown reaches zero before checkout, the hold is released automatically.
   * **Dynamic Price Calculation**: Real-time tally of selected seats and subtotal.
-* **Idempotent & Race-Condition Safe Backend**:
-  * Employs UUID v4 `idempotencyKey` preventing duplicate charges or bookings upon network retransmits.
-  * Checks for seat collisions atomically, returning `HTTP 409 Conflict` if another patron reserved any of the selected seats first.
+* **Idempotent & ACID-Safe Backend**:
+  * Employs UUID v4 `idempotencyKey` preventing duplicate charges upon retransmits.
+  * Uses Prisma interactive transactions and compound unique constraints on `ReservedSeat [movieId, showtime, seatCode]`, guaranteeing zero race conditions at the database engine level.
 * **Digital Cinema Pass (`TicketModal.jsx`)**:
   * Perforated cinema pass layout with tear notches, simulated scannable QR / barcodes, movie thumbnail, reference ID (`FLX-XXXXXX`), and seat allocation.
   * Features native **"Print / Save Ticket"** support via window print styling.

@@ -9,9 +9,10 @@ async function testAll() {
   try {
     await axios.get(`${base}/health/live`, { timeout: 800 });
   } catch {
-    const { app } = require('../src/server');
+    const { app, attachWebSockets } = require('../src/server');
     await new Promise((resolve) => {
       serverInstance = app.listen(0, () => {
+        attachWebSockets(serverInstance);
         const port = serverInstance.address().port;
         base = `http://localhost:${port}`;
         resolve();
@@ -167,6 +168,40 @@ async function testAll() {
       }
     }
 
+    // 10c2. Concurrent Race Condition Test: Two requests fire simultaneously for identical seat X9
+    const concurrentSeat = 'X9';
+    const raceShowtime = new Date(Date.now() + 172800000).toISOString();
+    const req1 = axios.post(`${base}/api/v1/bookings`, {
+      idempotencyKey: `race_1_${Date.now()}_${Math.random()}`,
+      movieId: 1108427,
+      movieTitle: 'Moana',
+      showtime: raceShowtime,
+      seats: [concurrentSeat],
+      totalAmount: 15.0,
+    }, {
+      headers: { 'x-guest-id': 'race_user_1' },
+      validateStatus: () => true, // Don't throw so we can inspect status codes
+    });
+
+    const req2 = axios.post(`${base}/api/v1/bookings`, {
+      idempotencyKey: `race_2_${Date.now()}_${Math.random()}`,
+      movieId: 1108427,
+      movieTitle: 'Moana',
+      showtime: raceShowtime,
+      seats: [concurrentSeat],
+      totalAmount: 15.0,
+    }, {
+      headers: { 'x-guest-id': 'race_user_2' },
+      validateStatus: () => true,
+    });
+
+    const [resA, resB] = await Promise.all([req1, req2]);
+    const statuses = [resA.status, resB.status].sort();
+    if (statuses[0] !== 201 || statuses[1] !== 409) {
+      throw new Error(`Race condition test failed: expected [201, 409] but got [${resA.status}, ${resB.status}]`);
+    }
+    console.log('✔ Concurrent seat booking race condition handled atomically: exactly one 201 and one 409');
+
     // 10d. Occupied seats query
     const occupiedRes = await axios.get(`${base}/api/v1/bookings/occupied`, {
       params: { movieId: 1108427, showtime: testShowtime },
@@ -187,6 +222,223 @@ async function testAll() {
       headers: { 'x-guest-id': 'test_architect_user' }
     });
     console.log(`✔ Booking cancelled: ${cancelRes.data.bookingId} (status: ${cancelRes.data.status})`);
+
+    // 10g. Real-Time Seat Holds & WebSocket Gateway Test
+    const WebSocket = require('ws');
+    const wsUrl = base.replace(/^http/, 'ws') + '/ws/seats';
+    const testWs = new WebSocket(wsUrl);
+
+    const wsReceivedEvents = [];
+    await new Promise((resolve, reject) => {
+      testWs.on('open', () => {
+        testWs.send(JSON.stringify({
+          action: 'subscribe',
+          movieId: 1108427,
+          showtime: testShowtime,
+        }));
+        resolve();
+      });
+      testWs.on('error', reject);
+    });
+
+    testWs.on('message', (raw) => {
+      try {
+        wsReceivedEvents.push(JSON.parse(raw.toString()));
+      } catch {}
+    });
+
+    // 1. Acquire seat hold on H1
+    const holdRes = await axios.post(`${base}/api/v1/bookings/hold`, {
+      movieId: 1108427,
+      showtime: testShowtime,
+      seats: ['H1'],
+    }, {
+      headers: { 'x-guest-id': 'hold_user_1' },
+    });
+    if (!holdRes.data.success || !holdRes.data.heldSeats.includes('H1')) {
+      throw new Error('Seat hold acquisition failed');
+    }
+
+    // 2. Conflict test: Another user attempts to hold H1
+    try {
+      await axios.post(`${base}/api/v1/bookings/hold`, {
+        movieId: 1108427,
+        showtime: testShowtime,
+        seats: ['H1'],
+      }, {
+        headers: { 'x-guest-id': 'hold_user_2' },
+      });
+      throw new Error('Expected 409 conflict when holding already-held seat');
+    } catch (err) {
+      if (err.response?.status !== 409) throw err;
+    }
+
+    // Wait 100ms for WS event delivery
+    await new Promise((r) => setTimeout(r, 100));
+    const heldEvent = wsReceivedEvents.find((e) => e.type === 'SEATS_HELD' && e.seats.includes('H1'));
+    if (!heldEvent) {
+      throw new Error('WebSocket SEATS_HELD event was not broadcast');
+    }
+
+    // 3. Release seat hold on H1
+    await axios.post(`${base}/api/v1/bookings/release`, {
+      movieId: 1108427,
+      showtime: testShowtime,
+      seats: ['H1'],
+    }, {
+      headers: { 'x-guest-id': 'hold_user_1' },
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+    const releaseEvent = wsReceivedEvents.find((e) => e.type === 'SEATS_RELEASED' && e.seats.includes('H1'));
+    if (!releaseEvent) {
+      throw new Error('WebSocket SEATS_RELEASED event was not broadcast');
+    }
+
+    testWs.close();
+    console.log('✔ Real-Time Seat Holds & WebSocket Gateway verified: SEATS_HELD & SEATS_RELEASED broadcast');
+
+    // 10f. Theater, Screen & Show Normalization Verification
+    const venuesRes = await axios.get(`${base}/api/v1/movies/1108427/shows?title=Moana`);
+    if (!Array.isArray(venuesRes.data) || venuesRes.data.length === 0) {
+      throw new Error('Venues and shows seeding failed');
+    }
+    const sampleTheater = venuesRes.data[0];
+    const sampleScreen = sampleTheater.screens[0];
+    const sampleShow = sampleScreen.shows[0];
+    console.log(`✔ Venues seeded & queried: ${venuesRes.data.length} theaters, Sample: ${sampleTheater.name} (${sampleScreen.format})`);
+
+    const occupancyRes = await axios.get(`${base}/api/v1/bookings/shows/${sampleShow.id}/occupancy`);
+    if (!occupancyRes.data.theaterName || !occupancyRes.data.format) {
+      throw new Error('Show occupancy endpoint returned invalid schema');
+    }
+    console.log(`✔ Show occupancy verified: ${occupancyRes.data.theaterName} • ${occupancyRes.data.screenName} • ${occupancyRes.data.format}`);
+
+    // Dynamically pick unoccupied seats for repeatable test isolation
+    const allCandidateSeats = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'D3', 'D4', 'E1', 'E2', 'E3', 'E4', 'F1', 'F2', 'F3', 'F4', 'G1', 'G2', 'G3', 'G4'];
+    const occupiedSet = new Set(occupancyRes.data.occupiedSeats || []);
+    const availableSeats = allCandidateSeats.filter((s) => !occupiedSet.has(s));
+    const testSeats1 = [availableSeats[0], availableSeats[1]];
+    const testSeats2 = [availableSeats[2], availableSeats[3]];
+
+    // Create booking referencing concrete showId
+    const showBooking = await axios.post(`${base}/api/v1/bookings`, {
+      idempotencyKey: `idemp_show_${Date.now()}`,
+      movieId: 1108427,
+      movieTitle: 'Moana',
+      showtime: sampleShow.startTime,
+      showId: sampleShow.id,
+      seats: testSeats1,
+      totalAmount: sampleShow.basePrice * 2,
+    }, {
+      headers: { 'x-guest-id': 'test_architect_user' },
+    });
+    if (!showBooking.data.show || showBooking.data.show.screen?.theater?.name !== sampleTheater.name) {
+      throw new Error('Show-linked booking response missing populated theater/screen details');
+    }
+    console.log(`✔ Booking linked to concrete Show: ${showBooking.data.show.screen.theater.name} (${showBooking.data.show.screen.format})`);
+
+    // 10g. Stripe Checkout & Payment Webhook State Machine
+    const paymentBooking = await axios.post(`${base}/api/v1/bookings`, {
+      idempotencyKey: `idemp_pay_${Date.now()}`,
+      movieId: 1108427,
+      movieTitle: 'Moana',
+      showtime: sampleShow.startTime,
+      showId: sampleShow.id,
+      seats: testSeats2,
+      totalAmount: sampleShow.basePrice * 2,
+      status: 'PENDING_PAYMENT',
+    }, {
+      headers: { 'x-guest-id': 'test_architect_user' },
+    });
+    if (paymentBooking.data.status !== 'PENDING_PAYMENT') {
+      throw new Error(`Expected PENDING_PAYMENT status, got ${paymentBooking.data.status}`);
+    }
+    console.log(`✔ Booking created in PENDING_PAYMENT state: ${paymentBooking.data.id}`);
+
+    // Create checkout session
+    const sessionRes = await axios.post(`${base}/api/v1/payments/create-checkout-session`, {
+      bookingId: paymentBooking.data.id,
+      successUrl: 'http://localhost:3000/booking/success',
+      cancelUrl: 'http://localhost:3000/booking/cancel',
+    }, {
+      headers: { 'x-guest-id': 'test_architect_user' },
+    });
+    if (!sessionRes.data.checkoutUrl || !sessionRes.data.sessionId) {
+      throw new Error('Checkout session generation failed');
+    }
+    console.log(`✔ Checkout Session generated: ${sessionRes.data.sessionId} (isMock: ${sessionRes.data.isMock})`);
+
+    // Confirm session / Webhook simulation
+    const confirmRes = await axios.post(`${base}/api/v1/payments/confirm-session`, {
+      bookingId: paymentBooking.data.id,
+      sessionId: sessionRes.data.sessionId,
+    }, {
+      headers: { 'x-guest-id': 'test_architect_user' },
+    });
+    if (confirmRes.data.booking.status !== 'CONFIRMED') {
+      throw new Error(`Expected CONFIRMED status after payment, got ${confirmRes.data.booking.status}`);
+    }
+    console.log(`✔ Payment confirmed & Booking status transitioned to CONFIRMED: ${confirmRes.data.booking.id}`);
+
+    // Test webhook handler
+    const webhookRes = await axios.post(`${base}/api/v1/payments/webhook`, {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: sessionRes.data.sessionId,
+          payment_intent: 'pi_test_12345',
+          metadata: { bookingId: paymentBooking.data.id },
+        },
+      },
+    }, {
+      headers: { 'content-type': 'application/json' },
+    });
+    if (!webhookRes.data.received) {
+      throw new Error('Webhook processing failed');
+    }
+    console.log('✔ Stripe webhook simulation processed successfully');
+
+    // 10h. Automated Abandoned Seat & Hold Sweeper Verification
+    const { reaperService } = require('../src/services/reaper.service');
+    const abandonSeats = [availableSeats[4], availableSeats[5]];
+    const abandonedBooking = await axios.post(`${base}/api/v1/bookings`, {
+      idempotencyKey: `idemp_abandon_${Date.now()}`,
+      movieId: 1108427,
+      movieTitle: 'Moana',
+      showtime: sampleShow.startTime,
+      showId: sampleShow.id,
+      seats: abandonSeats,
+      totalAmount: sampleShow.basePrice * 2,
+      status: 'PENDING_PAYMENT',
+    }, {
+      headers: { 'x-guest-id': 'abandon_user' },
+    });
+    console.log(`✔ Created pending booking to test sweeper: ${abandonedBooking.data.id} for seats [${abandonSeats.join(', ')}]`);
+
+    // Run reaper with 0-second threshold to sweep immediately
+    const reapResult = await reaperService.reapExpiredBookings(0);
+    if (reapResult.reaped < 1) {
+      throw new Error('Reaper failed to reap abandoned booking');
+    }
+
+    // Verify seats are free again by booking them under another user
+    const reclaimedBooking = await axios.post(`${base}/api/v1/bookings`, {
+      idempotencyKey: `idemp_reclaim_${Date.now()}`,
+      movieId: 1108427,
+      movieTitle: 'Moana',
+      showtime: sampleShow.startTime,
+      showId: sampleShow.id,
+      seats: abandonSeats,
+      totalAmount: sampleShow.basePrice * 2,
+      status: 'CONFIRMED',
+    }, {
+      headers: { 'x-guest-id': 'reclaim_user' },
+    });
+    if (!reclaimedBooking.data.id) {
+      throw new Error('Failed to reclaim seats freed by sweeper');
+    }
+    console.log(`✔ Sweeper successfully reaped abandoned booking & restored seats [${abandonSeats.join(', ')}] to inventory`);
 
     // 11. Two-Tier CacheService LRU eviction test
     const { CacheService } = require('../src/services/cache.service');

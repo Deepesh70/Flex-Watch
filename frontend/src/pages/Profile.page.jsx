@@ -244,16 +244,20 @@ const ProfileContent = ({ user, isClerk = false, onSignOut }) => {
                             {booking.id ? `FLX-${booking.id.slice(-6).toUpperCase()}` : 'FLX-TICKET'}
                           </span>
                           <h4 className="text-lg font-black text-white">{booking.movieTitle}</h4>
-                          <p className="text-xs text-gray-400">FlexWatch Cinema • Screen 4 (IMAX)</p>
+                          <p className="text-xs text-gray-400">
+                            {booking.theater || 'PVR IMAX'} • {booking.screen || 'Screen 1'} ({booking.format || 'IMAX'})
+                          </p>
                         </div>
                         <span
                           className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                             isConfirmed
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                              : booking.status === 'PENDING_PAYMENT'
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
                               : 'bg-red-500/20 text-red-400 border border-red-500/40'
                           }`}
                         >
-                          {booking.status}
+                          {booking.status === 'PENDING_PAYMENT' ? 'PENDING' : booking.status}
                         </span>
                       </div>
 

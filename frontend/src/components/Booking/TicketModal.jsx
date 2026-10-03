@@ -50,13 +50,24 @@ const TicketModal = ({ booking, onClose }) => {
             {/* Top Row: Cinema Info & Status */}
             <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b border-white/10">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-accent-gold px-2 py-0.5 rounded-full bg-accent-gold/10 border border-accent-gold/30">
-                  IMAX • Dolby Atmos
-                </span>
-                <h4 className="text-xl font-black text-white mt-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-accent-gold px-2 py-0.5 rounded-full bg-accent-gold/10 border border-accent-gold/30">
+                    {booking.format || booking.show?.screen?.format || 'IMAX Laser'}
+                  </span>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    booking.status === 'CONFIRMED'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}>
+                    {booking.status === 'CONFIRMED' ? 'CONFIRMED' : 'PENDING'}
+                  </span>
+                </div>
+                <h4 className="text-xl font-black text-white mt-1.5">
                   {booking.movieTitle}
                 </h4>
-                <p className="text-xs text-gray-400">FlexWatch Cinema • Screen 4</p>
+                <p className="text-xs text-gray-400">
+                  {booking.theater || booking.show?.screen?.theater?.name || 'PVR IMAX'} • {booking.screen || booking.show?.screen?.name || 'Screen 1'}
+                </p>
               </div>
               <div className="text-right">
                 <span className="text-[11px] font-mono text-gray-400">Ref Code</span>
@@ -108,29 +119,58 @@ const TicketModal = ({ booking, onClose }) => {
               <div className="absolute -top-3 -right-3 w-6 h-6 rounded-full bg-dark-900 border-l border-white/10" />
             </div>
 
-            {/* Total Paid & Barcode Section */}
+            {/* Total Paid & Scan-Ready Code Section */}
             <div className="flex items-center justify-between pt-2">
               <div>
                 <span className="text-[11px] text-gray-400 uppercase tracking-wider">Total Paid</span>
                 <p className="text-2xl font-black text-white">
                   ${Number(booking.totalAmount || 0).toFixed(2)}
                 </p>
+                <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
+                  <FaCheckCircle className="w-2.5 h-2.5" /> Admission Guaranteed
+                </span>
               </div>
 
-              {/* Barcode Graphic */}
-              <div className="flex flex-col items-end">
-                <div className="flex gap-1 items-center h-8 bg-white/90 px-3 py-1 rounded">
-                  <div className="w-1 h-full bg-dark-900" />
-                  <div className="w-0.5 h-full bg-dark-900" />
-                  <div className="w-2 h-full bg-dark-900" />
-                  <div className="w-0.5 h-full bg-dark-900" />
-                  <div className="w-1.5 h-full bg-dark-900" />
-                  <div className="w-0.5 h-full bg-dark-900" />
-                  <div className="w-1 h-full bg-dark-900" />
-                  <div className="w-2 h-full bg-dark-900" />
-                  <div className="w-1 h-full bg-dark-900" />
+              {/* Scannable Gate QR Code Graphic */}
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-white rounded-lg shadow-md">
+                  <svg viewBox="0 0 45 45" className="w-11 h-11">
+                    {/* QR Code Matrix Elements */}
+                    <rect width="45" height="45" fill="white" />
+                    {/* Top-left position marker */}
+                    <rect x="2" y="2" width="11" height="11" fill="black" />
+                    <rect x="4" y="4" width="7" height="7" fill="white" />
+                    <rect x="6" y="6" width="3" height="3" fill="black" />
+                    {/* Top-right position marker */}
+                    <rect x="32" y="2" width="11" height="11" fill="black" />
+                    <rect x="34" y="4" width="7" height="7" fill="white" />
+                    <rect x="36" y="6" width="3" height="3" fill="black" />
+                    {/* Bottom-left position marker */}
+                    <rect x="2" y="32" width="11" height="11" fill="black" />
+                    <rect x="4" y="34" width="7" height="7" fill="white" />
+                    <rect x="6" y="36" width="3" height="3" fill="black" />
+                    {/* Data sync bits */}
+                    <rect x="16" y="4" width="3" height="3" fill="black" />
+                    <rect x="22" y="4" width="3" height="3" fill="black" />
+                    <rect x="26" y="4" width="3" height="3" fill="black" />
+                    <rect x="16" y="10" width="3" height="3" fill="black" />
+                    <rect x="20" y="10" width="3" height="3" fill="black" />
+                    <rect x="16" y="16" width="13" height="3" fill="black" />
+                    <rect x="32" y="16" width="3" height="3" fill="black" />
+                    <rect x="4" y="20" width="3" height="3" fill="black" />
+                    <rect x="20" y="22" width="5" height="5" fill="black" />
+                    <rect x="36" y="22" width="5" height="3" fill="black" />
+                    <rect x="16" y="28" width="5" height="3" fill="black" />
+                    <rect x="24" y="28" width="5" height="3" fill="black" />
+                    <rect x="16" y="34" width="3" height="7" fill="black" />
+                    <rect x="22" y="38" width="9" height="3" fill="black" />
+                    <rect x="36" y="34" width="5" height="7" fill="black" />
+                  </svg>
                 </div>
-                <span className="text-[9px] font-mono text-gray-400 mt-1">E-TICKET VERIFIED</span>
+                <div className="text-right hidden sm:block">
+                  <span className="text-[10px] font-mono font-bold text-accent-gold block">GATE SCAN</span>
+                  <span className="text-[9px] font-mono text-gray-400">TURNSTILE ENTRY</span>
+                </div>
               </div>
             </div>
           </div>
